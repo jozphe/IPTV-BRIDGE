@@ -18,7 +18,7 @@ app.get('/', (req, res) => {
 });
 
 app.get('/configure', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'));
+  res.sendFile(path.join(__dirname, '../public/configure.html'));
 });
 
 // Real-time IPTV Connection Test API
