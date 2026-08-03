@@ -15,7 +15,7 @@ function stremioTypeToKind(type) {
         return 'movie';
     return 'series';
 }
-function getManifest(config) {
+function getManifest(config, baseUrl) {
     const catalogs = [];
     if (config.includeLive !== false) {
         catalogs.push({
@@ -41,12 +41,13 @@ function getManifest(config) {
             extra: [{ name: 'search', isRequired: false }, { name: 'genre', isRequired: false }]
         });
     }
+    const logo = baseUrl ? `${baseUrl}/logo.png` : 'https://iptv-bridge.vercel.app/logo.png';
     return {
         id: 'org.stremio.nuvio.iptv',
         version: '1.0.0',
         name: 'IPTV Bridge (Stremio & Nuvio)',
         description: 'Serverless Xtream & M3U IPTV Addon with TMDB Resolution, Global Search & Clean Categorization',
-        logo: 'https://cdn-icons-png.flaticon.com/512/3172/3172554.png',
+        logo,
         resources: ['catalog', 'meta', 'stream'],
         types: ['tv', 'movie', 'series'],
         catalogs,

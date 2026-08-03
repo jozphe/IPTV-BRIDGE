@@ -12,6 +12,13 @@ app.use(cors({ origin: '*' }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
+// Resolve the public base URL of the current request (works behind Vercel proxy)
+function getBaseUrl(req: express.Request): string {
+  const proto = (req.headers['x-forwarded-proto'] as string) || req.protocol || 'https';
+  const host = (req.headers['x-forwarded-host'] as string) || req.get('host') || '';
+  return `${proto}://${host}`;
+}
+
 // Configurator Web UI routes
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
@@ -27,12 +34,12 @@ app.post('/api/test-connection', handleTestConnection);
 // Manifest routes
 app.get('/manifest.json', (req, res) => {
   const config = decodeConfig('');
-  res.json(getManifest(config));
+  res.json(getManifest(config, getBaseUrl(req)));
 });
 
 app.get('/:config/manifest.json', (req, res) => {
   const config = decodeConfig(req.params.config);
-  res.json(getManifest(config));
+  res.json(getManifest(config, getBaseUrl(req)));
 });
 
 // Catalog routes

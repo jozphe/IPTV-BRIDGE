@@ -36,7 +36,7 @@ body {
 .field { background: rgba(244,240,232,0.03); border: 1px solid var(--line); color: var(--paper); transition: border-color .25s ease, background .25s ease; }
 .field:focus { outline: none; border-color: var(--accent); background: rgba(244,240,232,0.06); }
 .field::placeholder { color: #5f5b53; }
-.ember { background: var(--accent); color: #0a0a0a; transition: transform .3s cubic-bezier(.2,.8,.2,1), box-shadow .3s ease; }
+.ember { background: var(--accent); color: #0a0a0a; transition: box-shadow .3s ease; }
 .ember:hover { box-shadow: 0 0 0 1px var(--accent), 0 18px 50px -12px rgba(255,94,43,0.6); }
 .ghost { border: 1px solid var(--line); transition: border-color .25s ease, background .25s ease; }
 .ghost:hover { border-color: var(--paper); background: rgba(244,240,232,0.04); }

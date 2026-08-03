@@ -14,6 +14,12 @@ const PORT = process.env.PORT || 7000;
 app.use((0, cors_1.default)({ origin: '*' }));
 app.use(express_1.default.json());
 app.use(express_1.default.static(path_1.default.join(__dirname, '../public')));
+// Resolve the public base URL of the current request (works behind Vercel proxy)
+function getBaseUrl(req) {
+    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const host = req.headers['x-forwarded-host'] || req.get('host') || '';
+    return `${proto}://${host}`;
+}
 // Configurator Web UI routes
 app.get('/', (req, res) => {
     res.sendFile(path_1.default.join(__dirname, '../public/index.html'));
@@ -26,11 +32,11 @@ app.post('/api/test-connection', testConnection_1.handleTestConnection);
 // Manifest routes
 app.get('/manifest.json', (req, res) => {
     const config = (0, config_1.decodeConfig)('');
-    res.json((0, addon_1.getManifest)(config));
+    res.json((0, addon_1.getManifest)(config, getBaseUrl(req)));
 });
 app.get('/:config/manifest.json', (req, res) => {
     const config = (0, config_1.decodeConfig)(req.params.config);
-    res.json((0, addon_1.getManifest)(config));
+    res.json((0, addon_1.getManifest)(config, getBaseUrl(req)));
 });
 // Catalog routes
 app.get('/catalog/:type/:id.json', addon_1.handleCatalog);

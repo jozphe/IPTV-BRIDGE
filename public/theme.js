@@ -110,14 +110,17 @@
 
   /* ---------- Magnetic buttons ---------- */
   document.querySelectorAll('[data-magnetic]').forEach((el) => {
+    const reset = () => { if (window.gsap) window.gsap.to(el, { x: 0, y: 0, scale: 1, duration: 0.45, ease: 'power3.out' }); };
     el.addEventListener('mousemove', (e) => {
       const r = el.getBoundingClientRect();
       const mx = e.clientX - (r.left + r.width / 2), my = e.clientY - (r.top + r.height / 2);
-      if (window.gsap) window.gsap.to(el, { x: mx * 0.3, y: my * 0.4, duration: 0.4, ease: 'power3.out' });
+      if (window.gsap) window.gsap.to(el, { x: mx * 0.18, y: my * 0.22, duration: 0.4, ease: 'power3.out' });
     });
-    el.addEventListener('mouseleave', () => {
-      if (window.gsap) window.gsap.to(el, { x: 0, y: 0, duration: 0.5, ease: 'elastic.out(1,0.4)' });
-    });
+    el.addEventListener('mouseleave', reset);
+    // Snap back immediately on press/navigation so nothing is left drifting sideways
+    el.addEventListener('mousedown', () => { if (window.gsap) window.gsap.to(el, { scale: 0.95, duration: 0.12, ease: 'power2.out' }); });
+    el.addEventListener('mouseup', reset);
+    el.addEventListener('click', reset);
   });
 
   /* ---------- Glass navbar on scroll ---------- */

@@ -1,19 +1,25 @@
-<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Brand mark: an aperture/bridge arc igniting into an ember -->
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="IPTV Bridge">
   <defs>
-    <clipPath id="rounded"><rect width="120" height="120" rx="28"/></clipPath>
+    <linearGradient id="ember" x1="128" y1="96" x2="392" y2="416" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff7a45"/>
+      <stop offset="1" stop-color="#ff4d18"/>
+    </linearGradient>
+    <clipPath id="squircle"><rect width="512" height="512" rx="128"/></clipPath>
   </defs>
-  <g clip-path="url(#rounded)">
-    <rect width="120" height="120" fill="#0a0a0a"/>
-    <!-- signal arcs -->
-    <path d="M34 78 A34 34 0 0 1 86 78" stroke="#f4f0e8" stroke-opacity="0.25" stroke-width="4" stroke-linecap="round"/>
-    <path d="M42 78 A24 24 0 0 1 78 78" stroke="#f4f0e8" stroke-opacity="0.45" stroke-width="4" stroke-linecap="round"/>
-    <path d="M50 78 A14 14 0 0 1 70 78" stroke="#ff5e2b" stroke-width="4" stroke-linecap="round"/>
-    <!-- ember core -->
-    <circle cx="60" cy="80" r="6" fill="#ff5e2b"/>
-    <!-- rising spark -->
-    <path d="M60 66 L60 40" stroke="#ff5e2b" stroke-width="4" stroke-linecap="round"/>
-    <circle cx="60" cy="34" r="5" fill="#ff5e2b"/>
-    <circle cx="60" cy="34" r="10" fill="#ff5e2b" fill-opacity="0.2"/>
+
+  <!-- Badge -->
+  <g clip-path="url(#squircle)">
+    <rect width="512" height="512" fill="#0b0b0d"/>
+    <rect x="6" y="6" width="500" height="500" rx="122" fill="none" stroke="#ffffff" stroke-opacity="0.06" stroke-width="12"/>
+
+    <!-- Broadcast arcs converging on the play mark -->
+    <g stroke="#f4f0e8" fill="none" stroke-linecap="round">
+      <path d="M150 176 A150 150 0 0 1 362 176" stroke-opacity="0.16" stroke-width="16"/>
+      <path d="M186 206 A104 104 0 0 1 326 206" stroke-opacity="0.30" stroke-width="16"/>
+    </g>
+    <path d="M222 236 A48 48 0 0 1 290 236" stroke="url(#ember)" stroke-width="16" fill="none" stroke-linecap="round"/>
+
+    <!-- Play triangle (the stream) -->
+    <path d="M214 288 L214 396 Q214 414 230 405 L322 353 Q338 344 322 335 L230 283 Q214 274 214 288 Z" fill="url(#ember)"/>
   </g>
 </svg>
