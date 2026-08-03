@@ -13,6 +13,7 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
     tailwind.config = { theme: { extend: { fontFamily: {
       serif: ['"Instrument Serif"','serif'], sans: ['"Space Grotesk"','sans-serif'], mono: ['"JetBrains Mono"','monospace'] } } } };
@@ -20,13 +21,12 @@
   <link rel="stylesheet" href="/theme.css" />
 </head>
 <body class="antialiased">
-  <canvas id="particles" class="fixed inset-0 z-0"></canvas>
   <div class="grain"></div>
   <div class="vignette"></div>
   <div id="cursor"></div>
 
   <!-- NAV -->
-  <nav class="fixed top-0 inset-x-0 z-40 px-5 sm:px-10 py-5 flex items-center justify-between mix-blend-difference">
+  <nav id="nav" class="fixed top-0 inset-x-0 z-50 px-5 sm:px-10 py-4 flex items-center justify-between transition-all duration-300">
     <a href="/" class="flex items-center gap-2.5" data-cursor>
       <img src="/logo.svg" class="w-7 h-7 rounded-lg" alt="IPTV Bridge" />
       <span class="font-sans font-semibold tracking-tight">IPTV Bridge</span>
@@ -37,12 +37,14 @@
       <a href="#stack" class="ul" data-cursor>Stack</a>
       <a href="#faq" class="ul" data-cursor>FAQ</a>
     </div>
-    <a href="/configure" class="text-sm font-semibold ghost px-4 py-2 rounded-full font-sans" data-cursor>Build →</a>
+    <a href="/configure" class="text-sm font-semibold ember px-4 py-2 rounded-full font-sans" data-cursor>Build →</a>
   </nav>
 
   <!-- HERO -->
-  <header class="relative z-10 min-h-screen flex flex-col justify-center px-5 sm:px-10 pt-24 pb-16">
-    <div class="max-w-[1400px] mx-auto w-full">
+  <header class="relative z-10 min-h-screen flex flex-col justify-center px-5 sm:px-10 pt-24 pb-16 overflow-hidden">
+    <!-- 3D object, top-right -->
+    <canvas id="hero3d" class="hero-3d" data-hero-3d></canvas>
+    <div class="max-w-[1400px] mx-auto w-full relative z-10">
       <div class="flex items-center gap-3 mb-8 flex-wrap">
         <span data-hero-tag class="text-xs font-sans tracking-[0.25em] uppercase text-[var(--muted)]">Serverless</span>
         <span class="w-8 h-px bg-[var(--line)]"></span>
@@ -183,16 +185,46 @@
       <a href="/configure" class="block group" data-cursor>
         <h2 class="display text-[13vw] leading-[0.9] mb-4 group-hover:text-[var(--accent)] transition-colors">Press play.</h2>
       </a>
-      <div class="flex flex-wrap items-center justify-between gap-6 text-sm text-[var(--muted)] font-sans mt-10">
-        <div class="flex items-center gap-2.5">
-          <img src="/logo.svg" class="w-6 h-6 rounded-md" alt="" />
-          <span>Built for the Stremio & Nuvio v3 addon protocol.</span>
+
+      <!-- Columns -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-8 py-14 border-t border-[var(--line)] mt-10">
+        <div class="col-span-2 md:col-span-1">
+          <div class="flex items-center gap-2.5 mb-4">
+            <img src="/logo.svg" class="w-8 h-8 rounded-lg" alt="" />
+            <span class="font-sans font-semibold">IPTV Bridge</span>
+          </div>
+          <p class="text-sm text-[var(--muted)] font-sans leading-relaxed max-w-xs">Turn any Xtream or M3U source into a beautifully organized Stremio & Nuvio experience.</p>
         </div>
-        <div class="flex items-center gap-6">
-          <a href="/configure" class="ul" data-cursor>Build</a>
-          <a href="https://www.themoviedb.org/settings/api" target="_blank" class="ul" data-cursor>TMDB</a>
-          <span>Serverless · Vercel</span>
+        <div>
+          <p class="text-xs uppercase tracking-[0.2em] text-[var(--muted)] font-sans mb-4">Product</p>
+          <ul class="space-y-2.5 text-sm font-sans text-[var(--paper)]/70">
+            <li><a href="#how" class="ul" data-cursor>Method</a></li>
+            <li><a href="#features" class="ul" data-cursor>Features</a></li>
+            <li><a href="#stack" class="ul" data-cursor>Architecture</a></li>
+            <li><a href="/configure" class="ul" data-cursor>Build your addon</a></li>
+          </ul>
         </div>
+        <div>
+          <p class="text-xs uppercase tracking-[0.2em] text-[var(--muted)] font-sans mb-4">Resources</p>
+          <ul class="space-y-2.5 text-sm font-sans text-[var(--paper)]/70">
+            <li><a href="#faq" class="ul" data-cursor>FAQ</a></li>
+            <li><a href="https://www.themoviedb.org/settings/api" target="_blank" class="ul" data-cursor>Get a TMDB key</a></li>
+            <li><a href="https://www.stremio.com" target="_blank" class="ul" data-cursor>Stremio</a></li>
+            <li><a href="https://github.com/jozphe/IPTV-BRIDGE" target="_blank" class="ul" data-cursor>Source on GitHub</a></li>
+          </ul>
+        </div>
+        <div>
+          <p class="text-xs uppercase tracking-[0.2em] text-[var(--muted)] font-sans mb-4">Get started</p>
+          <a href="/configure" class="ember inline-flex items-center gap-2 px-5 py-3 rounded-full font-sans font-semibold text-sm" data-magnetic data-cursor-big>
+            Build now <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+          </a>
+          <p class="text-xs text-[var(--muted)] font-sans mt-4">Free · Serverless · Vercel-ready</p>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-between gap-4 pt-8 border-t border-[var(--line)] text-xs text-[var(--muted)] font-sans">
+        <span>© <span id="year"></span> IPTV Bridge · Built for the Stremio & Nuvio v3 addon protocol.</span>
+        <span>Made for people who just want their stuff to play.</span>
       </div>
     </div>
   </footer>
@@ -209,6 +241,7 @@
     /* GSAP */
     document.addEventListener('DOMContentLoaded', ()=>{
       lucide.createIcons();
+      var y=document.getElementById('year'); if(y) y.textContent=new Date().getFullYear();
       if(!window.gsap) return;
       gsap.registerPlugin(ScrollTrigger);
       const tl=gsap.timeline({defaults:{ease:'power4.out'}});
@@ -220,8 +253,57 @@
         .from('[data-hero-scroll]',{opacity:0,duration:0.8},0.9);
       gsap.utils.toArray('[data-reveal]').forEach(el=>{gsap.from(el,{opacity:0,y:40,duration:0.9,ease:'power3.out',scrollTrigger:{trigger:el,start:'top 85%'}});});
       gsap.to('h1.display',{yPercent:18,ease:'none',scrollTrigger:{trigger:'header',start:'top top',end:'bottom top',scrub:true}});
+      gsap.to('[data-hero-3d]',{yPercent:24,ease:'none',scrollTrigger:{trigger:'header',start:'top top',end:'bottom top',scrub:true}});
+      gsap.from('[data-hero-3d]',{opacity:0,duration:1.4,ease:'power2.out'});
       gsap.to('[data-hero-scroll]',{opacity:0,ease:'none',scrollTrigger:{trigger:'header',start:'top top',end:'40% top',scrub:true}});
     });
+
+    /* 3D hero object — an ember-lit icosahedron (Three.js) */
+    (function(){
+      const canvas=document.getElementById('hero3d');
+      if(!canvas || !window.THREE) return;
+      const THREE=window.THREE;
+      const renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true});
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+      const scene=new THREE.Scene();
+      const camera=new THREE.PerspectiveCamera(45,1,0.1,100);
+      camera.position.z=4.2;
+
+      const geo=new THREE.IcosahedronGeometry(1.35,1);
+      const solid=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({
+        color:0x140b08, metalness:0.6, roughness:0.35, flatShading:true
+      }));
+      const wire=new THREE.LineSegments(
+        new THREE.WireframeGeometry(geo),
+        new THREE.LineBasicMaterial({color:0xff5e2b, transparent:true, opacity:0.85})
+      );
+      const group=new THREE.Group();
+      group.add(solid); group.add(wire);
+      scene.add(group);
+
+      const key=new THREE.PointLight(0xff5e2b,2.2,20); key.position.set(3,2,4); scene.add(key);
+      const fill=new THREE.PointLight(0xffffff,0.6,20); fill.position.set(-4,-2,2); scene.add(fill);
+      scene.add(new THREE.AmbientLight(0x404040,0.8));
+
+      function size(){
+        const r=canvas.getBoundingClientRect();
+        renderer.setSize(r.width,r.height,false);
+        camera.aspect=r.width/r.height; camera.updateProjectionMatrix();
+      }
+      size(); window.addEventListener('resize',size);
+
+      let tx=0,ty=0;
+      window.addEventListener('mousemove',e=>{ tx=(e.clientX/window.innerWidth-0.5); ty=(e.clientY/window.innerHeight-0.5); });
+
+      (function loop(){
+        group.rotation.y+=0.0035; group.rotation.x+=0.0016;
+        camera.position.x+=((tx*0.6)-camera.position.x)*0.05;
+        camera.position.y+=((-ty*0.6)-camera.position.y)*0.05;
+        camera.lookAt(0,0,0);
+        renderer.render(scene,camera);
+        requestAnimationFrame(loop);
+      })();
+    })();
   </script>
 </body>
 </html>

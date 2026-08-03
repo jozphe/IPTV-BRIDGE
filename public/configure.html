@@ -20,7 +20,6 @@
   <link rel="stylesheet" href="/theme.css" />
 </head>
 <body class="antialiased">
-  <canvas id="particles" class="fixed inset-0 z-0"></canvas>
   <div class="grain"></div>
   <div class="vignette"></div>
   <div id="cursor"></div>
@@ -30,7 +29,7 @@
   </div>
 
   <!-- NAV -->
-  <nav class="fixed top-0 inset-x-0 z-40 px-5 sm:px-10 py-5 flex items-center justify-between mix-blend-difference">
+  <nav id="nav" class="fixed top-0 inset-x-0 z-50 px-5 sm:px-10 py-4 flex items-center justify-between transition-all duration-300">
     <a href="/" class="flex items-center gap-2.5" data-cursor>
       <img src="/logo.svg" class="w-7 h-7 rounded-lg" alt="IPTV Bridge" />
       <span class="font-sans font-semibold tracking-tight">IPTV Bridge</span>
@@ -41,10 +40,10 @@
   </nav>
 
   <section id="setup" class="relative z-10 px-5 sm:px-10 pt-32 pb-28">
-    <div class="max-w-[1000px] mx-auto">
+    <div class="max-w-[620px] mx-auto">
       <div class="text-center mb-14">
         <p class="text-sm font-sans tracking-[0.25em] uppercase text-[var(--muted)] mb-4">Build it now</p>
-        <h1 class="display text-6xl sm:text-8xl">Three steps to <span class="italic-accent">play.</span></h1>
+        <h1 class="display text-5xl sm:text-6xl">Three steps to <span class="italic-accent">play.</span></h1>
       </div>
 
       <div class="flex items-center justify-center gap-4 mb-14">
@@ -55,7 +54,7 @@
         <div class="flex items-center gap-3"><div id="node-3" class="snode w-11 h-11 rounded-full grid place-items-center text-xl">3</div><span class="text-xs font-sans text-[var(--muted)] hidden sm:block">Install</span></div>
       </div>
 
-      <div class="border border-[var(--line)] rounded-[28px] p-6 sm:p-12 bg-[rgba(244,240,232,0.015)] backdrop-blur-sm">
+      <div class="border border-[var(--line)] rounded-[28px] p-6 sm:p-8 bg-[rgba(244,240,232,0.015)] backdrop-blur-sm">
         <form onsubmit="event.preventDefault();" class="font-sans">
           <!-- STEP 1 -->
           <div id="step-1" class="space-y-8">

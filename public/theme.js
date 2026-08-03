@@ -5,7 +5,7 @@
   if (canvas) {
     const ctx = canvas.getContext('2d');
     let w, h, particles, mouse = { x: -999, y: -999 };
-    const COUNT = window.innerWidth < 640 ? 40 : 90;
+    const COUNT = window.innerWidth < 640 ? 60 : 140;
 
     function resize() {
       w = canvas.width = window.innerWidth;
@@ -13,11 +13,13 @@
     }
 
     function makeParticle() {
-      const ember = Math.random() < 0.35;
+      const ember = Math.random() < 0.45;
+      // Bias spawn toward the top-right quadrant so the hero corner feels alive
+      const topRight = Math.random() < 0.5;
       return {
-        x: Math.random() * w,
-        y: Math.random() * h,
-        r: Math.random() * (ember ? 1.8 : 1.1) + 0.3,
+        x: topRight ? w * (0.55 + Math.random() * 0.45) : Math.random() * w,
+        y: topRight ? h * (Math.random() * 0.5) : Math.random() * h,
+        r: Math.random() * (ember ? 2.4 : 1.4) + 0.4,
         vx: (Math.random() - 0.5) * 0.25,
         vy: -Math.random() * 0.35 - 0.05, // drift upward like sparks
         life: Math.random(),
@@ -51,11 +53,11 @@
 
         const twinkle = 0.5 + Math.sin(p.life * Math.PI) * 0.5;
         if (p.ember) {
-          ctx.fillStyle = `rgba(255,94,43,${0.55 * twinkle})`;
-          ctx.shadowBlur = 8;
-          ctx.shadowColor = 'rgba(255,94,43,0.8)';
+          ctx.fillStyle = `rgba(255,94,43,${0.8 * twinkle})`;
+          ctx.shadowBlur = 14;
+          ctx.shadowColor = 'rgba(255,94,43,0.9)';
         } else {
-          ctx.fillStyle = `rgba(244,240,232,${0.28 * twinkle})`;
+          ctx.fillStyle = `rgba(244,240,232,${0.4 * twinkle})`;
           ctx.shadowBlur = 0;
         }
         ctx.beginPath();
@@ -117,4 +119,12 @@
       if (window.gsap) window.gsap.to(el, { x: 0, y: 0, duration: 0.5, ease: 'elastic.out(1,0.4)' });
     });
   });
+
+  /* ---------- Glass navbar on scroll ---------- */
+  const nav = document.getElementById('nav');
+  if (nav) {
+    const onScroll = () => nav.classList.toggle('scrolled', window.scrollY > 20);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+  }
 })();

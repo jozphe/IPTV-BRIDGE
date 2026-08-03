@@ -54,3 +54,32 @@ body {
 .ul { background-image: linear-gradient(var(--accent),var(--accent)); background-size: 0% 1px; background-position: 0 100%; background-repeat: no-repeat; transition: background-size .3s ease; }
 .ul:hover { background-size: 100% 1px; }
 [data-reveal] { will-change: transform, opacity; }
+
+/* ---------- Glass navbar ---------- */
+#nav { border-bottom: 1px solid transparent; }
+#nav.scrolled {
+  background: rgba(10, 10, 10, 0.55);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border-bottom: 1px solid var(--line);
+  padding-top: 0.65rem;
+  padding-bottom: 0.65rem;
+}
+
+/* ---------- Hero 3D object (top-right) ---------- */
+.hero-3d {
+  position: absolute;
+  top: 50%;
+  right: -6vw;
+  transform: translateY(-50%);
+  width: 46vw;
+  height: 46vw;
+  max-width: 640px;
+  max-height: 640px;
+  pointer-events: none;
+  z-index: 1;
+}
+@media (max-width: 768px) {
+  .hero-3d { top: 14%; right: -18vw; width: 78vw; height: 78vw; opacity: 0.55; transform: none; }
+}
+
