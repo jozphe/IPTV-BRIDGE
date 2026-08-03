@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IPTV Bridge • Next-Gen Stremio & Nuvio Addon</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #08090d;
+      color: #f3f4f6;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      overflow-x: hidden;
+    }
+    .glow-bg {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.25;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .glass-panel {
+      background: rgba(18, 20, 29, 0.65);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    }
+    .glass-input {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .glass-input:focus {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: #6366f1;
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.25);
+      outline: none;
+    }
+    .tab-btn.active {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(236, 72, 153, 0.2));
+      border-color: rgba(99, 102, 241, 0.5);
+      color: #ffffff;
+      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.2);
+    }
+    .animate-pulse-slow {
+      animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+  </style>
+</head>
+<body class="min-h-screen relative flex flex-col justify-between items-center py-10 px-4 sm:px-6">
+
+  <!-- Background Ambient Glows -->
+  <div class="glow-bg w-[500px] h-[500px] bg-indigo-600 top-[-100px] left-[-100px]"></div>
+  <div class="glow-bg w-[600px] h-[600px] bg-pink-600 bottom-[-150px] right-[-150px]"></div>
+  <div class="glow-bg w-[400px] h-[400px] bg-blue-600 top-[40%] left-[50%] -translate-x-1/2"></div>
+
+  <!-- Header -->
+  <header class="relative z-10 w-full max-w-4xl text-center mb-8">
+    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-semibold text-indigo-400 mb-4 backdrop-blur-md">
+      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+      Serverless • Stremio & Nuvio Compatible • Vercel Ready
+    </div>
+    <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight text-white mb-3 bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-indigo-300">
+      IPTV Bridge <span class="text-indigo-500">Pro</span>
+    </h1>
+    <p class="text-slate-400 text-sm sm:text-base max-w-xl mx-auto">
+      Connect your IPTV (Xtream Codes or M3U) directly to Stremio and Nuvio with automated TMDB matching, global search, and clean categories.
+    </p>
+  </header>
+
+  <!-- Main Container -->
+  <main class="relative z-10 w-full max-w-3xl glass-panel rounded-3xl p-6 sm:p-10 mb-10">
+
+    <!-- Stepper Navigation -->
+    <div class="flex items-center justify-between border-b border-white/10 pb-6 mb-8 gap-2">
+      <button onclick="switchTab(1)" id="tab-1" class="tab-btn active flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-white/5 text-xs sm:text-sm font-semibold transition-all">
+        <i data-lucide="server" class="w-4 h-4 text-indigo-400"></i>
+        <span>1. Provider Setup</span>
+      </button>
+      <button onclick="switchTab(2)" id="tab-2" class="tab-btn flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-white/5 text-xs sm:text-sm font-semibold text-slate-400 transition-all">
+        <i data-lucide="layers" class="w-4 h-4 text-pink-400"></i>
+        <span>2. Categories & TMDB</span>
+      </button>
+      <button onclick="switchTab(3)" id="tab-3" class="tab-btn flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-white/5 text-xs sm:text-sm font-semibold text-slate-400 transition-all">
+        <i data-lucide="download-cloud" class="w-4 h-4 text-emerald-400"></i>
+        <span>3. Install & Link</span>
+      </button>
+    </div>
+
+    <!-- Form Body -->
+    <form id="configForm" onsubmit="event.preventDefault();">
+
+      <!-- STEP 1: Provider Setup -->
+      <div id="step-1-content" class="space-y-6">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">IPTV Connection Type</label>
+          <div class="grid grid-cols-2 gap-4">
+            <button type="button" onclick="setProviderType('xtream')" id="btn-xtream" class="flex items-center justify-center gap-3 p-4 rounded-2xl border-2 border-indigo-500 bg-indigo-500/10 text-white font-bold transition-all">
+              <i data-lucide="key-round" class="w-5 h-5 text-indigo-400"></i>
+              <span>Xtream Codes API</span>
+            </button>
+            <button type="button" onclick="setProviderType('m3u')" id="btn-m3u" class="flex items-center justify-center gap-3 p-4 rounded-2xl border border-white/10 bg-white/5 text-slate-400 hover:text-white font-bold transition-all">
+              <i data-lucide="link" class="w-5 h-5 text-pink-400"></i>
+              <span>M3U Playlist URL</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Xtream Inputs -->
+        <div id="xtream-fields" class="space-y-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1.5">Xtream Server Host URL</label>
+            <input type="text" id="xtream-host" placeholder="http://iptv-provider.com:8080" class="w-full glass-input rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500">
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1.5">Username</label>
+              <input type="text" id="xtream-user" placeholder="your_username" class="w-full glass-input rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500">
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1.5">Password</label>
+              <input type="password" id="xtream-pass" placeholder="••••••••" class="w-full glass-input rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500">
+            </div>
+          </div>
+        </div>
+
+        <!-- M3U Inputs -->
+        <div id="m3u-fields" class="space-y-4 hidden">
+          <div>
+            <label class="block text-xs font-medium text-slate-300 mb-1.5">M3U / M3U8 Playlist URL</label>
+            <input type="url" id="m3u-url" placeholder="https://provider.com/playlist.m3u" class="w-full glass-input rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500">
+          </div>
+        </div>
+
+        <!-- Test Connection Button -->
+        <div class="pt-2">
+          <button type="button" onclick="testConnection()" id="btn-test" class="w-full flex items-center justify-center gap-2 py-3.5 px-6 rounded-xl bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-bold shadow-lg shadow-indigo-500/20 transition-all">
+            <i data-lucide="zap" class="w-4 h-4"></i>
+            <span>Test Connection & Load Categories</span>
+          </button>
+        </div>
+
+        <!-- Status Result Alert -->
+        <div id="status-box" class="hidden p-4 rounded-2xl border text-sm flex items-start gap-3">
+          <i id="status-icon" data-lucide="check-circle" class="w-5 h-5 mt-0.5 shrink-0"></i>
+          <div>
+            <p id="status-title" class="font-bold mb-0.5"></p>
+            <p id="status-msg" class="text-xs opacity-80"></p>
+          </div>
+        </div>
+
+        <div class="flex justify-end pt-4">
+          <button type="button" onclick="switchTab(2)" class="flex items-center gap-2 px-6 py-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-sm transition-all">
+            <span>Next Step</span>
+            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 2: Categories & TMDB -->
+      <div id="step-2-content" class="space-y-6 hidden">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">TMDB API Key (Recommended for Search & Poster Resolution)</label>
+          <input type="text" id="tmdb-key" placeholder="Enter TMDB API Key (v3)" class="w-full glass-input rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500">
+          <p class="text-xs text-slate-500 mt-1">Allows Stremio & Nuvio search to resolve IMDB/TMDB movies directly into your IPTV stream sources.</p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Included Media Content Types</label>
+          <div class="grid grid-cols-3 gap-3">
+            <label class="flex items-center gap-3 p-3 rounded-xl glass-input cursor-pointer">
+              <input type="checkbox" id="inc-live" checked class="w-4 h-4 accent-indigo-500 rounded">
+              <span class="text-xs font-semibold text-white">Live Channels</span>
+            </label>
+            <label class="flex items-center gap-3 p-3 rounded-xl glass-input cursor-pointer">
+              <input type="checkbox" id="inc-movies" checked class="w-4 h-4 accent-indigo-500 rounded">
+              <span class="text-xs font-semibold text-white">VOD Movies</span>
+            </label>
+            <label class="flex items-center gap-3 p-3 rounded-xl glass-input cursor-pointer">
+              <input type="checkbox" id="inc-series" checked class="w-4 h-4 accent-indigo-500 rounded">
+              <span class="text-xs font-semibold text-white">TV Series</span>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <label class="text-xs font-bold uppercase tracking-wider text-slate-400">Available IPTV Categories</label>
+            <div class="flex gap-2">
+              <button type="button" onclick="toggleAllCategories(true)" class="text-xs text-indigo-400 hover:underline font-semibold">Select All</button>
+              <span class="text-slate-600">•</span>
+              <button type="button" onclick="toggleAllCategories(false)" class="text-xs text-slate-400 hover:underline font-semibold">Clear All</button>
+            </div>
+          </div>
+
+          <div id="category-pill-container" class="max-h-60 overflow-y-auto p-3 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-wrap gap-2">
+            <p class="text-xs text-slate-500 p-2">Click "Test Connection" in Step 1 to fetch and customize IPTV categories dynamically.</p>
+          </div>
+        </div>
+
+        <div class="flex justify-between pt-4 border-t border-white/10">
+          <button type="button" onclick="switchTab(1)" class="flex items-center gap-2 px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-semibold text-sm transition-all">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            <span>Back</span>
+          </button>
+          <button type="button" onclick="generateInstallLink(); switchTab(3);" class="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-bold text-sm shadow-lg shadow-indigo-500/20 transition-all">
+            <span>Generate Manifest</span>
+            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 3: Install & Deploy -->
+      <div id="step-3-content" class="space-y-6 hidden">
+        <div class="text-center py-4">
+          <div class="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 mb-4 shadow-lg shadow-emerald-500/10">
+            <i data-lucide="check" class="w-8 h-8"></i>
+          </div>
+          <h3 class="text-2xl font-bold text-white mb-1">Addon Ready for Installation!</h3>
+          <p class="text-xs text-slate-400">Click below to install directly into Stremio or Nuvio player.</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <a id="stremio-btn" href="#" target="_blank" class="flex items-center justify-center gap-3 p-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition-all shadow-lg shadow-indigo-500/25">
+            <i data-lucide="tv" class="w-5 h-5"></i>
+            <span>Install to Stremio</span>
+          </a>
+          <button type="button" onclick="copyManifestUrl()" class="flex items-center justify-center gap-3 p-4 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-bold transition-all border border-white/10">
+            <i data-lucide="copy" class="w-5 h-5 text-pink-400"></i>
+            <span>Copy Manifest URL</span>
+          </button>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Manifest URL (For Nuvio / Stremio Web)</label>
+          <input type="text" id="manifest-url-input" readonly class="w-full glass-input rounded-xl px-4 py-3 text-xs font-mono text-indigo-300">
+        </div>
+
+        <div class="flex justify-start pt-4 border-t border-white/10">
+          <button type="button" onclick="switchTab(2)" class="flex items-center gap-2 px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-semibold text-sm transition-all">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            <span>Back to Settings</span>
+          </button>
+        </div>
+      </div>
+
+    </form>
+  </main>
+
+  <!-- Footer -->
+  <footer class="relative z-10 text-center text-xs text-slate-500">
+    <p>Powered by Serverless Vercel Architecture • Designed for Stremio & Nuvio v3 Addon Protocol</p>
+  </footer>
+
+  <script>
+    let currentProviderType = 'xtream';
+    let fetchedCategories = [];
+
+    function switchTab(step) {
+      document.querySelectorAll('[id^="step-"]').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+
+      document.getElementById(`step-${step}-content`).classList.remove('hidden');
+      document.getElementById(`tab-${step}`).classList.add('active');
+
+      if (step === 3) {
+        generateInstallLink();
+      }
+    }
+
+    function setProviderType(type) {
+      currentProviderType = type;
+      if (type === 'xtream') {
+        document.getElementById('xtream-fields').classList.remove('hidden');
+        document.getElementById('m3u-fields').classList.add('hidden');
+
+        document.getElementById('btn-xtream').className = "flex items-center justify-center gap-3 p-4 rounded-2xl border-2 border-indigo-500 bg-indigo-500/10 text-white font-bold transition-all";
+        document.getElementById('btn-m3u').className = "flex items-center justify-center gap-3 p-4 rounded-2xl border border-white/10 bg-white/5 text-slate-400 hover:text-white font-bold transition-all";
+      } else {
+        document.getElementById('xtream-fields').classList.add('hidden');
+        document.getElementById('m3u-fields').classList.remove('hidden');
+
+        document.getElementById('btn-m3u').className = "flex items-center justify-center gap-3 p-4 rounded-2xl border-2 border-pink-500 bg-pink-500/10 text-white font-bold transition-all";
+        document.getElementById('btn-xtream').className = "flex items-center justify-center gap-3 p-4 rounded-2xl border border-white/10 bg-white/5 text-slate-400 hover:text-white font-bold transition-all";
+      }
+    }
+
+    async function testConnection() {
+      const btn = document.getElementById('btn-test');
+      const box = document.getElementById('status-box');
+      btn.disabled = true;
+      btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Testing Connection...`;
+      lucide.createIcons();
+
+      const payload = {
+        type: currentProviderType,
+        host: document.getElementById('xtream-host').value,
+        username: document.getElementById('xtream-user').value,
+        password: document.getElementById('xtream-pass').value,
+        m3uUrl: document.getElementById('m3u-url').value,
+        tmdbApiKey: document.getElementById('tmdb-key').value
+      };
+
+      try {
+        const res = await fetch('/api/test-connection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        box.classList.remove('hidden');
+
+        if (data.success) {
+          box.className = "p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-sm flex items-start gap-3";
+          document.getElementById('status-icon').setAttribute('data-lucide', 'check-circle');
+          document.getElementById('status-title').innerText = "Connected Successfully!";
+          document.getElementById('status-msg').innerText = data.message;
+
+          if (data.categories) {
+            fetchedCategories = data.categories;
+            renderCategories(fetchedCategories);
+          }
+        } else {
+          box.className = "p-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 text-rose-300 text-sm flex items-start gap-3";
+          document.getElementById('status-icon').setAttribute('data-lucide', 'alert-triangle');
+          document.getElementById('status-title').innerText = "Connection Failed";
+          document.getElementById('status-msg').innerText = data.error || "Please verify credentials and host URL.";
+        }
+      } catch (e) {
+        box.classList.remove('hidden');
+        box.className = "p-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 text-rose-300 text-sm flex items-start gap-3";
+        document.getElementById('status-title').innerText = "Network Error";
+        document.getElementById('status-msg').innerText = e.message;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i data-lucide="zap" class="w-4 h-4"></i> Test Connection & Load Categories`;
+        lucide.createIcons();
+      }
+    }
+
+    function renderCategories(cats) {
+      const container = document.getElementById('category-pill-container');
+      if (!cats || cats.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-500 p-2">No categories found.</p>`;
+        return;
+      }
+
+      container.innerHTML = cats.map(cat => `
+        <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:border-indigo-500/50 cursor-pointer transition-all">
+          <input type="checkbox" value="${cat.id}" checked class="cat-checkbox w-3.5 h-3.5 accent-indigo-500 rounded">
+          <span class="text-xs text-slate-300 font-medium">${cat.name}</span>
+        </label>
+      `).join('');
+    }
+
+    function toggleAllCategories(selectAll) {
+      document.querySelectorAll('.cat-checkbox').forEach(cb => cb.checked = selectAll);
+    }
+
+    function buildConfigObject() {
+      const selectedCats = Array.from(document.querySelectorAll('.cat-checkbox:checked')).map(cb => cb.value);
+
+      return {
+        type: currentProviderType,
+        host: document.getElementById('xtream-host').value,
+        username: document.getElementById('xtream-user').value,
+        password: document.getElementById('xtream-pass').value,
+        m3uUrl: document.getElementById('m3u-url').value,
+        tmdbApiKey: document.getElementById('tmdb-key').value,
+        includeLive: document.getElementById('inc-live').checked,
+        includeMovies: document.getElementById('inc-movies').checked,
+        includeSeries: document.getElementById('inc-series').checked,
+        includedCategories: selectedCats
+      };
+    }
+
+    function generateInstallLink() {
+      const config = buildConfigObject();
+      const jsonStr = JSON.stringify(config);
+      const compressed = LZString.compressToEncodedURIComponent(jsonStr);
+
+      const baseUrl = window.location.origin;
+      const manifestHttps = `${baseUrl}/${compressed}/manifest.json`;
+      const manifestStremio = manifestHttps.replace(/^https?:\/\//, 'stremio://');
+
+      document.getElementById('manifest-url-input').value = manifestHttps;
+      document.getElementById('stremio-btn').href = manifestStremio;
+    }
+
+    function copyManifestUrl() {
+      const input = document.getElementById('manifest-url-input');
+      input.select();
+      navigator.clipboard.writeText(input.value);
+      alert('Manifest URL copied to clipboard!');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>
