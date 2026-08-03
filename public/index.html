@@ -1,431 +1,572 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>IPTV Bridge • Next-Gen Stremio & Nuvio Addon</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IPTV Bridge — Cinema for your Stremio & Nuvio</title>
+  <meta name="description" content="Connect Xtream Codes or M3U IPTV to Stremio & Nuvio with TMDB matching, global search and clean categories. Serverless, free, Vercel-ready." />
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
+  <!-- GSAP -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/split-type@0.3.4/umd/index.min.js"></script>
   <script>
     tailwind.config = {
-      darkMode: 'class',
       theme: {
         extend: {
           fontFamily: {
-            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            serif: ['"Instrument Serif"', 'serif'],
+            sans: ['"Space Grotesk"', 'sans-serif'],
             mono: ['"JetBrains Mono"', 'monospace'],
           },
-          colors: {
-            brand: {
-              50: '#eef2ff',
-              500: '#6366f1',
-              600: '#4f46e5',
-              700: '#4338ca',
-            }
-          }
-        }
-      }
-    }
+        },
+      },
+    };
   </script>
   <style>
+    :root {
+      --ink: #0a0a0a;
+      --paper: #f4f0e8;
+      --accent: #ff5e2b;   /* single warm ember accent */
+      --muted: #8a857c;
+      --line: rgba(244,240,232,0.12);
+    }
+    * { -webkit-tap-highlight-color: transparent; }
+    ::selection { background: var(--accent); color: #0a0a0a; }
+    html { scroll-behavior: smooth; }
     body {
-      background-color: #08090d;
-      color: #f3f4f6;
-      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--ink);
+      color: var(--paper);
+      font-family: 'Space Grotesk', sans-serif;
       overflow-x: hidden;
+      cursor: default;
     }
-    .glow-bg {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(120px);
-      opacity: 0.25;
-      pointer-events: none;
-      z-index: 0;
+    /* Film grain overlay */
+    .grain {
+      position: fixed; inset: -50%; z-index: 60; pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+      opacity: 0.05; mix-blend-mode: overlay;
+      animation: grain 0.5s steps(2) infinite;
     }
-    .glass-panel {
-      background: rgba(18, 20, 29, 0.65);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-    }
-    .glass-input {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .glass-input:focus {
-      background: rgba(255, 255, 255, 0.06);
-      border-color: #6366f1;
-      box-shadow: 0 0 20px rgba(99, 102, 241, 0.25);
-      outline: none;
-    }
-    .tab-btn.active {
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(236, 72, 153, 0.2));
-      border-color: rgba(99, 102, 241, 0.5);
-      color: #ffffff;
-      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.2);
-    }
-    .animate-pulse-slow {
-      animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-    }
+    @keyframes grain { 0%{transform:translate(0,0)} 50%{transform:translate(-3%,2%)} 100%{transform:translate(2%,-3%)} }
+    /* Vignette */
+    .vignette { position: fixed; inset: 0; z-index: 1; pointer-events: none;
+      background: radial-gradient(120% 90% at 50% 0%, transparent 55%, rgba(0,0,0,0.55) 100%); }
+    /* Serif display */
+    .display { font-family: 'Instrument Serif', serif; font-weight: 400; letter-spacing: -0.01em; line-height: 0.94; }
+    .italic-accent { font-style: italic; color: var(--accent); }
+    /* Line reveal masks */
+    .line-mask { overflow: hidden; display: block; }
+    /* Custom cursor dot */
+    #cursor { position: fixed; top:0; left:0; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); z-index: 80; pointer-events: none; transform: translate(-50%,-50%); mix-blend-mode: difference; transition: width .25s ease, height .25s ease, background .25s ease; }
+    #cursor.big { width: 46px; height: 46px; background: rgba(255,94,43,0.25); }
+    @media (hover: none) { #cursor { display: none; } }
+    /* Marquee */
+    .marquee { display: flex; width: max-content; animation: scroll 32s linear infinite; }
+    .marquee:hover { animation-play-state: paused; }
+    @keyframes scroll { to { transform: translateX(-50%); } }
+    /* Field */
+    .field { background: rgba(244,240,232,0.03); border: 1px solid var(--line); color: var(--paper);
+      transition: border-color .25s ease, background .25s ease; }
+    .field:focus { outline: none; border-color: var(--accent); background: rgba(244,240,232,0.06); }
+    .field::placeholder { color: #5f5b53; }
+    /* Ember button */
+    .ember { background: var(--accent); color: #0a0a0a; transition: transform .3s cubic-bezier(.2,.8,.2,1), box-shadow .3s ease; }
+    .ember:hover { box-shadow: 0 0 0 1px var(--accent), 0 18px 50px -12px rgba(255,94,43,0.6); }
+    .ghost { border: 1px solid var(--line); transition: border-color .25s ease, background .25s ease; }
+    .ghost:hover { border-color: var(--paper); background: rgba(244,240,232,0.04); }
+    /* Provider card */
+    .pcard { border: 1px solid var(--line); transition: border-color .25s ease, background .25s ease, transform .25s ease; }
+    .pcard.on { border-color: var(--accent); background: rgba(255,94,43,0.06); }
+    /* Step index */
+    .snode { border: 1px solid var(--line); color: var(--muted); transition: all .35s ease; font-family: 'Instrument Serif', serif; }
+    .snode.on { border-color: var(--accent); color: var(--accent); }
+    .snode.done { border-color: var(--paper); color: var(--paper); }
+    /* Pills */
+    .pill { border: 1px solid var(--line); transition: all .18s ease; }
+    .pill:hover { border-color: rgba(255,94,43,0.5); }
+    .pill.on { border-color: var(--accent); background: rgba(255,94,43,0.1); }
+    .scroll-slim::-webkit-scrollbar { width: 6px; }
+    .scroll-slim::-webkit-scrollbar-thumb { background: rgba(244,240,232,0.15); border-radius: 6px; }
+    /* Toast */
+    #toast { transition: transform .4s cubic-bezier(.34,1.56,.64,1), opacity .3s ease; }
+    /* Hover link underline */
+    .ul { background-image: linear-gradient(var(--accent),var(--accent)); background-size: 0% 1px; background-position: 0 100%; background-repeat: no-repeat; transition: background-size .3s ease; }
+    .ul:hover { background-size: 100% 1px; }
+    /* Reveal init state (GSAP will animate) */
+    [data-reveal] { will-change: transform, opacity; }
   </style>
 </head>
-<body class="min-h-screen relative flex flex-col justify-between items-center py-10 px-4 sm:px-6">
+<body class="antialiased">
+  <div class="grain"></div>
+  <div class="vignette"></div>
+  <div id="cursor"></div>
 
-  <!-- Background Ambient Glows -->
-  <div class="glow-bg w-[500px] h-[500px] bg-indigo-600 top-[-100px] left-[-100px]"></div>
-  <div class="glow-bg w-[600px] h-[600px] bg-pink-600 bottom-[-150px] right-[-150px]"></div>
-  <div class="glow-bg w-[400px] h-[400px] bg-blue-600 top-[40%] left-[50%] -translate-x-1/2"></div>
+  <!-- Toast -->
+  <div id="toast" class="fixed top-6 left-1/2 -translate-x-1/2 translate-y-[-160%] opacity-0 z-[70] px-5 py-3 bg-[var(--paper)] text-[var(--ink)] text-sm font-semibold flex items-center gap-2 rounded-full">
+    <i data-lucide="check" class="w-4 h-4"></i><span id="toast-text">Copied</span>
+  </div>
 
-  <!-- Header -->
-  <header class="relative z-10 w-full max-w-4xl text-center mb-8">
-    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-semibold text-indigo-400 mb-4 backdrop-blur-md">
-      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-      Serverless • Stremio & Nuvio Compatible • Vercel Ready
+  <!-- NAV -->
+  <nav class="fixed top-0 inset-x-0 z-40 px-5 sm:px-10 py-5 flex items-center justify-between mix-blend-difference">
+    <a href="#" class="flex items-center gap-2.5" data-cursor>
+      <span class="w-2.5 h-2.5 rounded-full bg-[var(--accent)]"></span>
+      <span class="font-sans font-semibold tracking-tight">IPTV Bridge</span>
+    </a>
+    <div class="hidden md:flex items-center gap-8 text-sm text-[var(--paper)]/70 font-sans">
+      <a href="#how" class="ul" data-cursor>Method</a>
+      <a href="#features" class="ul" data-cursor>Features</a>
+      <a href="#setup" class="ul" data-cursor>Build</a>
     </div>
-    <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight text-white mb-3 bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-indigo-300">
-      IPTV Bridge <span class="text-indigo-500">Pro</span>
-    </h1>
-    <p class="text-slate-400 text-sm sm:text-base max-w-xl mx-auto">
-      Connect your IPTV (Xtream Codes or M3U) directly to Stremio and Nuvio with automated TMDB matching, global search, and clean categories.
-    </p>
+    <a href="#setup" class="text-sm font-semibold ghost px-4 py-2 rounded-full font-sans" data-cursor>Start →</a>
+  </nav>
+
+  <!-- HERO -->
+  <header class="relative z-10 min-h-screen flex flex-col justify-center px-5 sm:px-10 pt-24 pb-16">
+    <div class="max-w-[1400px] mx-auto w-full">
+      <div class="flex items-center gap-3 mb-8 overflow-hidden">
+        <span data-hero-tag class="text-xs font-sans tracking-[0.25em] uppercase text-[var(--muted)]">Serverless</span>
+        <span class="w-8 h-px bg-[var(--line)]"></span>
+        <span data-hero-tag class="text-xs font-sans tracking-[0.25em] uppercase text-[var(--muted)]">Stremio · Nuvio</span>
+        <span class="w-8 h-px bg-[var(--line)]"></span>
+        <span data-hero-tag class="text-xs font-sans tracking-[0.25em] uppercase text-[var(--muted)]">Free on Vercel</span>
+      </div>
+
+      <h1 class="display text-[16vw] sm:text-[12vw] lg:text-[10.5vw]">
+        <span class="line-mask"><span data-hero-line>Turn your IPTV</span></span>
+        <span class="line-mask"><span data-hero-line>into a <span class="italic-accent">cinema.</span></span></span>
+      </h1>
+
+      <div class="mt-10 grid md:grid-cols-[1.4fr_1fr] gap-8 items-end">
+        <p data-hero-sub class="text-lg sm:text-xl text-[var(--paper)]/70 max-w-xl leading-relaxed font-sans">
+          Xtream Codes or an M3U link becomes organized catalogs, global search, and automatic TMDB matching — every film and show resolves straight to your own sources.
+        </p>
+        <div data-hero-cta class="flex flex-col sm:flex-row md:justify-end gap-3">
+          <a href="#setup" class="ember px-7 py-4 rounded-full font-sans font-semibold text-sm flex items-center justify-center gap-2" data-magnetic data-cursor-big>
+            Build my addon <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+          </a>
+          <a href="#how" class="ghost px-7 py-4 rounded-full font-sans font-semibold text-sm flex items-center justify-center gap-2" data-cursor>
+            The method
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div data-hero-scroll class="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-[var(--muted)]">
+      <span class="text-[10px] font-sans tracking-[0.3em] uppercase">Scroll</span>
+      <span class="w-px h-10 bg-gradient-to-b from-[var(--accent)] to-transparent"></span>
+    </div>
   </header>
 
-  <!-- Main Container -->
-  <main class="relative z-10 w-full max-w-3xl glass-panel rounded-3xl p-6 sm:p-10 mb-10">
+  <!-- MARQUEE -->
+  <section class="relative z-10 border-y border-[var(--line)] py-6 overflow-hidden">
+    <div id="marquee-track" class="marquee items-center gap-12"></div>
+  </section>
 
-    <!-- Stepper Navigation -->
-    <div class="flex items-center justify-between border-b border-white/10 pb-6 mb-8 gap-2">
-      <button onclick="switchTab(1)" id="tab-1" class="tab-btn active flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-white/5 text-xs sm:text-sm font-semibold transition-all">
-        <i data-lucide="server" class="w-4 h-4 text-indigo-400"></i>
-        <span>1. Provider Setup</span>
-      </button>
-      <button onclick="switchTab(2)" id="tab-2" class="tab-btn flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-white/5 text-xs sm:text-sm font-semibold text-slate-400 transition-all">
-        <i data-lucide="layers" class="w-4 h-4 text-pink-400"></i>
-        <span>2. Categories & TMDB</span>
-      </button>
-      <button onclick="switchTab(3)" id="tab-3" class="tab-btn flex items-center gap-2.5 px-4 py-2.5 rounded-xl border border-white/5 text-xs sm:text-sm font-semibold text-slate-400 transition-all">
-        <i data-lucide="download-cloud" class="w-4 h-4 text-emerald-400"></i>
-        <span>3. Install & Link</span>
-      </button>
+  <!-- HOW / METHOD -->
+  <section id="how" class="relative z-10 px-5 sm:px-10 py-28 sm:py-40">
+    <div class="max-w-[1400px] mx-auto">
+      <div class="flex items-baseline justify-between mb-16 flex-wrap gap-4">
+        <h2 class="display text-6xl sm:text-8xl" data-reveal>The method</h2>
+        <span class="text-sm font-sans text-[var(--muted)] max-w-xs" data-reveal>Three moving parts, one clean result inside your player.</span>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-px bg-[var(--line)] rounded-3xl overflow-hidden">
+        <div class="bg-[var(--ink)] p-8 sm:p-10 group" data-reveal data-cursor>
+          <span class="display text-5xl text-[var(--muted)] group-hover:text-[var(--accent)] transition-colors">01</span>
+          <h3 class="text-2xl mt-6 mb-3 font-sans font-semibold">Connect</h3>
+          <p class="text-[var(--paper)]/60 leading-relaxed font-sans text-sm">Drop in Xtream credentials or an M3U URL. We parse channels, movies and series in one pass and cache them warm.</p>
+        </div>
+        <div class="bg-[var(--ink)] p-8 sm:p-10 group" data-reveal data-cursor>
+          <span class="display text-5xl text-[var(--muted)] group-hover:text-[var(--accent)] transition-colors">02</span>
+          <h3 class="text-2xl mt-6 mb-3 font-sans font-semibold">Resolve</h3>
+          <p class="text-[var(--paper)]/60 leading-relaxed font-sans text-sm">Titles are cleaned of release tags and matched to TMDB — posters, years, ratings and IMDB/TMDB IDs all line up.</p>
+        </div>
+        <div class="bg-[var(--ink)] p-8 sm:p-10 group" data-reveal data-cursor>
+          <span class="display text-5xl text-[var(--muted)] group-hover:text-[var(--accent)] transition-colors">03</span>
+          <h3 class="text-2xl mt-6 mb-3 font-sans font-semibold">Stream</h3>
+          <p class="text-[var(--paper)]/60 leading-relaxed font-sans text-sm">Search anything in Stremio or Nuvio and your own IPTV source appears as a playable stream. One tap, it plays.</p>
+        </div>
+      </div>
     </div>
+  </section>
 
-    <!-- Form Body -->
-    <form id="configForm" onsubmit="event.preventDefault();">
+  <!-- FEATURES big type list -->
+  <section id="features" class="relative z-10 px-5 sm:px-10 py-20 border-t border-[var(--line)]">
+    <div class="max-w-[1400px] mx-auto">
+      <p class="text-sm font-sans tracking-[0.25em] uppercase text-[var(--muted)] mb-10" data-reveal>What you get</p>
+      <ul class="divide-y divide-[var(--line)]">
+        <li class="feat-row py-7 flex items-center justify-between gap-6 group" data-reveal data-cursor>
+          <span class="display text-4xl sm:text-6xl transition-transform duration-500 group-hover:translate-x-3">Clean categories</span>
+          <span class="text-[var(--muted)] text-sm font-sans max-w-xs text-right hidden sm:block">Live, Movies & Series sorted into tidy catalogs.</span>
+        </li>
+        <li class="feat-row py-7 flex items-center justify-between gap-6 group" data-reveal data-cursor>
+          <span class="display text-4xl sm:text-6xl transition-transform duration-500 group-hover:translate-x-3">Global search</span>
+          <span class="text-[var(--muted)] text-sm font-sans max-w-xs text-right hidden sm:block">Find any title, stream from your provider.</span>
+        </li>
+        <li class="feat-row py-7 flex items-center justify-between gap-6 group" data-reveal data-cursor>
+          <span class="display text-4xl sm:text-6xl transition-transform duration-500 group-hover:translate-x-3">TMDB matching</span>
+          <span class="text-[var(--muted)] text-sm font-sans max-w-xs text-right hidden sm:block">Posters, ratings, IMDB & TMDB resolution.</span>
+        </li>
+        <li class="feat-row py-7 flex items-center justify-between gap-6 group" data-reveal data-cursor>
+          <span class="display text-4xl sm:text-6xl transition-transform duration-500 group-hover:translate-x-3">Zero servers</span>
+          <span class="text-[var(--muted)] text-sm font-sans max-w-xs text-right hidden sm:block">Credentials live in your link. Nothing stored.</span>
+        </li>
+      </ul>
+    </div>
+  </section>
 
-      <!-- STEP 1: Provider Setup -->
-      <div id="step-1-content" class="space-y-6">
-        <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">IPTV Connection Type</label>
-          <div class="grid grid-cols-2 gap-4">
-            <button type="button" onclick="setProviderType('xtream')" id="btn-xtream" class="flex items-center justify-center gap-3 p-4 rounded-2xl border-2 border-indigo-500 bg-indigo-500/10 text-white font-bold transition-all">
-              <i data-lucide="key-round" class="w-5 h-5 text-indigo-400"></i>
-              <span>Xtream Codes API</span>
-            </button>
-            <button type="button" onclick="setProviderType('m3u')" id="btn-m3u" class="flex items-center justify-center gap-3 p-4 rounded-2xl border border-white/10 bg-white/5 text-slate-400 hover:text-white font-bold transition-all">
-              <i data-lucide="link" class="w-5 h-5 text-pink-400"></i>
-              <span>M3U Playlist URL</span>
-            </button>
-          </div>
+  <!-- SETUP WIZARD -->
+  <section id="setup" class="relative z-10 px-5 sm:px-10 py-28 sm:py-36 border-t border-[var(--line)]">
+    <div class="max-w-[1000px] mx-auto">
+      <div class="text-center mb-14" data-reveal>
+        <p class="text-sm font-sans tracking-[0.25em] uppercase text-[var(--muted)] mb-4">Build it now</p>
+        <h2 class="display text-6xl sm:text-8xl">Three steps to <span class="italic-accent">play.</span></h2>
+      </div>
+
+      <!-- Step rail -->
+      <div class="flex items-center justify-center gap-4 mb-14">
+        <div class="flex items-center gap-3">
+          <div id="node-1" class="snode on w-11 h-11 rounded-full grid place-items-center text-xl">1</div>
+          <span class="text-xs font-sans text-[var(--muted)] hidden sm:block">Provider</span>
         </div>
+        <span id="line-1" class="w-10 sm:w-16 h-px bg-[var(--line)]"></span>
+        <div class="flex items-center gap-3">
+          <div id="node-2" class="snode w-11 h-11 rounded-full grid place-items-center text-xl">2</div>
+          <span class="text-xs font-sans text-[var(--muted)] hidden sm:block">Content</span>
+        </div>
+        <span id="line-2" class="w-10 sm:w-16 h-px bg-[var(--line)]"></span>
+        <div class="flex items-center gap-3">
+          <div id="node-3" class="snode w-11 h-11 rounded-full grid place-items-center text-xl">3</div>
+          <span class="text-xs font-sans text-[var(--muted)] hidden sm:block">Install</span>
+        </div>
+      </div>
 
-        <!-- Xtream Inputs -->
-        <div id="xtream-fields" class="space-y-4">
-          <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1.5">Xtream Server Host URL</label>
-            <input type="text" id="xtream-host" placeholder="http://iptv-provider.com:8080" class="w-full glass-input rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500">
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div class="border border-[var(--line)] rounded-[28px] p-6 sm:p-12 bg-[rgba(244,240,232,0.015)]" data-reveal>
+        <form onsubmit="event.preventDefault();" class="font-sans">
+          <!-- STEP 1 -->
+          <div id="step-1" class="space-y-8">
             <div>
-              <label class="block text-xs font-medium text-slate-300 mb-1.5">Username</label>
-              <input type="text" id="xtream-user" placeholder="your_username" class="w-full glass-input rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500">
+              <h3 class="display text-4xl mb-1">Connect your provider</h3>
+              <p class="text-sm text-[var(--paper)]/60">Choose a method, then test it live.</p>
             </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <button type="button" onclick="setProviderType('xtream')" id="card-xtream" class="pcard on text-left p-5 rounded-2xl" data-cursor>
+                <div class="flex items-center justify-between mb-4">
+                  <i data-lucide="key-round" class="w-5 h-5 text-[var(--accent)]"></i>
+                  <span id="dot-xtream" class="w-2.5 h-2.5 rounded-full bg-[var(--accent)]"></span>
+                </div>
+                <p class="font-semibold text-sm">Xtream Codes</p>
+                <p class="text-xs text-[var(--muted)] mt-0.5">Host · user · pass</p>
+              </button>
+              <button type="button" onclick="setProviderType('m3u')" id="card-m3u" class="pcard text-left p-5 rounded-2xl" data-cursor>
+                <div class="flex items-center justify-between mb-4">
+                  <i data-lucide="link-2" class="w-5 h-5 text-[var(--paper)]/70"></i>
+                  <span id="dot-m3u" class="w-2.5 h-2.5 rounded-full border border-[var(--line)]"></span>
+                </div>
+                <p class="font-semibold text-sm">M3U Playlist</p>
+                <p class="text-xs text-[var(--muted)] mt-0.5">A single URL</p>
+              </button>
+            </div>
+
+            <div id="xtream-fields" class="space-y-4">
+              <div>
+                <label class="block text-xs text-[var(--paper)]/70 mb-2">Server host URL</label>
+                <input type="text" id="xtream-host" placeholder="http://your-provider.com:8080" class="w-full field rounded-xl px-4 py-3.5 text-sm" />
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div><label class="block text-xs text-[var(--paper)]/70 mb-2">Username</label>
+                  <input type="text" id="xtream-user" placeholder="username" class="w-full field rounded-xl px-4 py-3.5 text-sm" /></div>
+                <div><label class="block text-xs text-[var(--paper)]/70 mb-2">Password</label>
+                  <input type="password" id="xtream-pass" placeholder="••••••••" class="w-full field rounded-xl px-4 py-3.5 text-sm" /></div>
+              </div>
+            </div>
+
+            <div id="m3u-fields" class="space-y-4 hidden">
+              <div><label class="block text-xs text-[var(--paper)]/70 mb-2">Playlist URL</label>
+                <input type="url" id="m3u-url" placeholder="https://provider.com/get.php?...type=m3u_plus" class="w-full field rounded-xl px-4 py-3.5 text-sm" /></div>
+            </div>
+
+            <button type="button" onclick="testConnection()" id="btn-test" class="ember w-full py-4 rounded-full font-semibold text-sm flex items-center justify-center gap-2" data-magnetic data-cursor-big>
+              <i data-lucide="zap" class="w-4 h-4"></i> Test connection & load content
+            </button>
+
+            <div id="status-box" class="hidden rounded-2xl border p-4 text-sm items-start gap-3"></div>
+
+            <div class="flex justify-end">
+              <button type="button" onclick="goStep(2)" id="next-1" class="opacity-30 pointer-events-none ghost px-6 py-3 rounded-full font-semibold text-sm flex items-center gap-2 transition-opacity">
+                Continue <i data-lucide="arrow-right" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- STEP 2 -->
+          <div id="step-2" class="space-y-8 hidden">
             <div>
-              <label class="block text-xs font-medium text-slate-300 mb-1.5">Password</label>
-              <input type="password" id="xtream-pass" placeholder="••••••••" class="w-full glass-input rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500">
+              <h3 class="display text-4xl mb-1">Pick what to include</h3>
+              <p class="text-sm text-[var(--paper)]/60">Add a TMDB key for search & posters, then choose categories.</p>
             </div>
-          </div>
-        </div>
 
-        <!-- M3U Inputs -->
-        <div id="m3u-fields" class="space-y-4 hidden">
-          <div>
-            <label class="block text-xs font-medium text-slate-300 mb-1.5">M3U / M3U8 Playlist URL</label>
-            <input type="url" id="m3u-url" placeholder="https://provider.com/playlist.m3u" class="w-full glass-input rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500">
-          </div>
-        </div>
+            <div>
+              <label class="block text-xs text-[var(--paper)]/70 mb-2">TMDB API Key <span class="text-[var(--muted)]">· recommended</span></label>
+              <div class="relative">
+                <input type="text" id="tmdb-key" placeholder="Paste your TMDB v3 API key" class="w-full field rounded-xl px-4 py-3.5 pr-24 text-sm" />
+                <a href="https://www.themoviedb.org/settings/api" target="_blank" class="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-[var(--accent)] px-2 py-1 ul" data-cursor>Get key</a>
+              </div>
+            </div>
 
-        <!-- Test Connection Button -->
-        <div class="pt-2">
-          <button type="button" onclick="testConnection()" id="btn-test" class="w-full flex items-center justify-center gap-2 py-3.5 px-6 rounded-xl bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-bold shadow-lg shadow-indigo-500/20 transition-all">
-            <i data-lucide="zap" class="w-4 h-4"></i>
-            <span>Test Connection & Load Categories</span>
-          </button>
-        </div>
+            <div>
+              <label class="block text-xs text-[var(--paper)]/70 mb-3">Media types</label>
+              <div class="grid grid-cols-3 gap-3">
+                <label class="pcard flex flex-col gap-3 p-4 rounded-2xl cursor-pointer" data-cursor>
+                  <div class="flex items-center justify-between"><i data-lucide="tv-minimal" class="w-5 h-5 text-[var(--accent)]"></i>
+                    <input type="checkbox" id="inc-live" checked class="w-4 h-4 accent-[var(--accent)]" /></div>
+                  <span class="text-xs font-semibold">Live TV</span>
+                </label>
+                <label class="pcard flex flex-col gap-3 p-4 rounded-2xl cursor-pointer" data-cursor>
+                  <div class="flex items-center justify-between"><i data-lucide="film" class="w-5 h-5 text-[var(--accent)]"></i>
+                    <input type="checkbox" id="inc-movies" checked class="w-4 h-4 accent-[var(--accent)]" /></div>
+                  <span class="text-xs font-semibold">Movies</span>
+                </label>
+                <label class="pcard flex flex-col gap-3 p-4 rounded-2xl cursor-pointer" data-cursor>
+                  <div class="flex items-center justify-between"><i data-lucide="monitor-play" class="w-5 h-5 text-[var(--accent)]"></i>
+                    <input type="checkbox" id="inc-series" checked class="w-4 h-4 accent-[var(--accent)]" /></div>
+                  <span class="text-xs font-semibold">Series</span>
+                </label>
+              </div>
+            </div>
 
-        <!-- Status Result Alert -->
-        <div id="status-box" class="hidden p-4 rounded-2xl border text-sm flex items-start gap-3">
-          <i id="status-icon" data-lucide="check-circle" class="w-5 h-5 mt-0.5 shrink-0"></i>
-          <div>
-            <p id="status-title" class="font-bold mb-0.5"></p>
-            <p id="status-msg" class="text-xs opacity-80"></p>
-          </div>
-        </div>
+            <div>
+              <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+                <label class="text-xs text-[var(--paper)]/70">Categories <span id="cat-count" class="text-[var(--muted)]"></span></label>
+                <div class="flex items-center gap-3">
+                  <input id="cat-search" oninput="filterCatPills()" placeholder="Filter…" class="field rounded-lg px-3 py-1.5 text-xs w-28" />
+                  <button type="button" onclick="toggleAllCats(true)" class="text-xs font-semibold text-[var(--accent)] ul" data-cursor>All</button>
+                  <button type="button" onclick="toggleAllCats(false)" class="text-xs font-semibold text-[var(--muted)] ul" data-cursor>None</button>
+                </div>
+              </div>
+              <div id="cat-container" class="max-h-64 overflow-y-auto scroll-slim p-3 rounded-2xl bg-black/30 border border-[var(--line)] flex flex-wrap gap-2">
+                <p class="text-xs text-[var(--muted)] p-2">Test your connection in step 1 to load categories.</p>
+              </div>
+            </div>
 
-        <div class="flex justify-end pt-4">
-          <button type="button" onclick="switchTab(2)" class="flex items-center gap-2 px-6 py-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-sm transition-all">
-            <span>Next Step</span>
-            <i data-lucide="arrow-right" class="w-4 h-4"></i>
-          </button>
-        </div>
-      </div>
-
-      <!-- STEP 2: Categories & TMDB -->
-      <div id="step-2-content" class="space-y-6 hidden">
-        <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">TMDB API Key (Recommended for Search & Poster Resolution)</label>
-          <input type="text" id="tmdb-key" placeholder="Enter TMDB API Key (v3)" class="w-full glass-input rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500">
-          <p class="text-xs text-slate-500 mt-1">Allows Stremio & Nuvio search to resolve IMDB/TMDB movies directly into your IPTV stream sources.</p>
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Included Media Content Types</label>
-          <div class="grid grid-cols-3 gap-3">
-            <label class="flex items-center gap-3 p-3 rounded-xl glass-input cursor-pointer">
-              <input type="checkbox" id="inc-live" checked class="w-4 h-4 accent-indigo-500 rounded">
-              <span class="text-xs font-semibold text-white">Live Channels</span>
-            </label>
-            <label class="flex items-center gap-3 p-3 rounded-xl glass-input cursor-pointer">
-              <input type="checkbox" id="inc-movies" checked class="w-4 h-4 accent-indigo-500 rounded">
-              <span class="text-xs font-semibold text-white">VOD Movies</span>
-            </label>
-            <label class="flex items-center gap-3 p-3 rounded-xl glass-input cursor-pointer">
-              <input type="checkbox" id="inc-series" checked class="w-4 h-4 accent-indigo-500 rounded">
-              <span class="text-xs font-semibold text-white">TV Series</span>
-            </label>
-          </div>
-        </div>
-
-        <div>
-          <div class="flex items-center justify-between mb-3">
-            <label class="text-xs font-bold uppercase tracking-wider text-slate-400">Available IPTV Categories</label>
-            <div class="flex gap-2">
-              <button type="button" onclick="toggleAllCategories(true)" class="text-xs text-indigo-400 hover:underline font-semibold">Select All</button>
-              <span class="text-slate-600">•</span>
-              <button type="button" onclick="toggleAllCategories(false)" class="text-xs text-slate-400 hover:underline font-semibold">Clear All</button>
+            <div class="flex justify-between pt-2 border-t border-[var(--line)]">
+              <button type="button" onclick="goStep(1)" class="ghost px-5 py-3 rounded-full font-semibold text-sm flex items-center gap-2" data-cursor>
+                <i data-lucide="arrow-left" class="w-4 h-4"></i> Back
+              </button>
+              <button type="button" onclick="generateLink(); goStep(3)" class="ember px-6 py-3 rounded-full font-semibold text-sm flex items-center gap-2" data-magnetic data-cursor-big>
+                Generate addon <i data-lucide="arrow-right" class="w-4 h-4"></i>
+              </button>
             </div>
           </div>
 
-          <div id="category-pill-container" class="max-h-60 overflow-y-auto p-3 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-wrap gap-2">
-            <p class="text-xs text-slate-500 p-2">Click "Test Connection" in Step 1 to fetch and customize IPTV categories dynamically.</p>
-          </div>
-        </div>
+          <!-- STEP 3 -->
+          <div id="step-3" class="space-y-8 hidden">
+            <div class="text-center">
+              <div class="inline-grid place-items-center w-14 h-14 rounded-full border border-[var(--accent)] text-[var(--accent)] mb-5">
+                <i data-lucide="check" class="w-7 h-7"></i>
+              </div>
+              <h3 class="display text-5xl mb-1">Ready to roll.</h3>
+              <p class="text-sm text-[var(--paper)]/60">Install in one click, or copy the manifest into Nuvio.</p>
+            </div>
 
-        <div class="flex justify-between pt-4 border-t border-white/10">
-          <button type="button" onclick="switchTab(1)" class="flex items-center gap-2 px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-semibold text-sm transition-all">
-            <i data-lucide="arrow-left" class="w-4 h-4"></i>
-            <span>Back</span>
-          </button>
-          <button type="button" onclick="generateInstallLink(); switchTab(3);" class="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white font-bold text-sm shadow-lg shadow-indigo-500/20 transition-all">
-            <span>Generate Manifest</span>
-            <i data-lucide="arrow-right" class="w-4 h-4"></i>
-          </button>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <a id="stremio-btn" href="#" class="ember p-4 rounded-full font-semibold flex items-center justify-center gap-2.5" data-magnetic data-cursor-big>
+                <i data-lucide="tv" class="w-5 h-5"></i> Install to Stremio
+              </a>
+              <button type="button" onclick="copyManifest()" class="ghost p-4 rounded-full font-semibold flex items-center justify-center gap-2.5" data-cursor>
+                <i data-lucide="copy" class="w-5 h-5 text-[var(--accent)]"></i> Copy manifest URL
+              </button>
+            </div>
+
+            <div>
+              <label class="block text-xs text-[var(--paper)]/70 mb-2">Manifest URL</label>
+              <div class="flex gap-2">
+                <input type="text" id="manifest-url" readonly class="flex-1 field rounded-xl px-4 py-3.5 text-xs font-mono text-[var(--accent)]" />
+                <button type="button" onclick="copyManifest()" class="ghost px-4 rounded-xl" data-cursor><i data-lucide="clipboard" class="w-4 h-4"></i></button>
+              </div>
+            </div>
+
+            <div class="border border-[var(--line)] rounded-2xl p-4 flex gap-3 text-xs text-[var(--paper)]/60 items-start">
+              <i data-lucide="info" class="w-4 h-4 mt-0.5 text-[var(--accent)] shrink-0"></i>
+              <p>In <b class="text-[var(--paper)]">Nuvio</b> or Stremio Web, paste the manifest URL into the add-addon field. Credentials are encoded into this link — never stored on a server.</p>
+            </div>
+
+            <div class="flex justify-start pt-2 border-t border-[var(--line)]">
+              <button type="button" onclick="goStep(2)" class="ghost px-5 py-3 rounded-full font-semibold text-sm flex items-center gap-2" data-cursor>
+                <i data-lucide="arrow-left" class="w-4 h-4"></i> Edit settings
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="relative z-10 px-5 sm:px-10 pt-24 pb-10 border-t border-[var(--line)]">
+    <div class="max-w-[1400px] mx-auto">
+      <h2 class="display text-[13vw] leading-[0.9] mb-14" data-reveal>Press play.</h2>
+      <div class="flex flex-wrap items-center justify-between gap-6 text-sm text-[var(--muted)] font-sans">
+        <span>Built for the Stremio & Nuvio v3 addon protocol.</span>
+        <div class="flex items-center gap-6">
+          <a href="#setup" class="ul" data-cursor>Build</a>
+          <a href="https://www.themoviedb.org/settings/api" target="_blank" class="ul" data-cursor>TMDB</a>
+          <span>Serverless · Vercel</span>
         </div>
       </div>
-
-      <!-- STEP 3: Install & Deploy -->
-      <div id="step-3-content" class="space-y-6 hidden">
-        <div class="text-center py-4">
-          <div class="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 mb-4 shadow-lg shadow-emerald-500/10">
-            <i data-lucide="check" class="w-8 h-8"></i>
-          </div>
-          <h3 class="text-2xl font-bold text-white mb-1">Addon Ready for Installation!</h3>
-          <p class="text-xs text-slate-400">Click below to install directly into Stremio or Nuvio player.</p>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <a id="stremio-btn" href="#" target="_blank" class="flex items-center justify-center gap-3 p-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition-all shadow-lg shadow-indigo-500/25">
-            <i data-lucide="tv" class="w-5 h-5"></i>
-            <span>Install to Stremio</span>
-          </a>
-          <button type="button" onclick="copyManifestUrl()" class="flex items-center justify-center gap-3 p-4 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-bold transition-all border border-white/10">
-            <i data-lucide="copy" class="w-5 h-5 text-pink-400"></i>
-            <span>Copy Manifest URL</span>
-          </button>
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">Manifest URL (For Nuvio / Stremio Web)</label>
-          <input type="text" id="manifest-url-input" readonly class="w-full glass-input rounded-xl px-4 py-3 text-xs font-mono text-indigo-300">
-        </div>
-
-        <div class="flex justify-start pt-4 border-t border-white/10">
-          <button type="button" onclick="switchTab(2)" class="flex items-center gap-2 px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-semibold text-sm transition-all">
-            <i data-lucide="arrow-left" class="w-4 h-4"></i>
-            <span>Back to Settings</span>
-          </button>
-        </div>
-      </div>
-
-    </form>
-  </main>
-
-  <!-- Footer -->
-  <footer class="relative z-10 text-center text-xs text-slate-500">
-    <p>Powered by Serverless Vercel Architecture • Designed for Stremio & Nuvio v3 Addon Protocol</p>
+    </div>
   </footer>
 
   <script>
-    let currentProviderType = 'xtream';
-    let fetchedCategories = [];
+    /* =================== APP LOGIC =================== */
+    let providerType = 'xtream';
+    let categories = [];
 
-    function switchTab(step) {
-      document.querySelectorAll('[id^="step-"]').forEach(el => el.classList.add('hidden'));
-      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-
-      document.getElementById(`step-${step}-content`).classList.remove('hidden');
-      document.getElementById(`tab-${step}`).classList.add('active');
-
-      if (step === 3) {
-        generateInstallLink();
-      }
+    function goStep(n) {
+      [1,2,3].forEach(i => document.getElementById('step-'+i).classList.toggle('hidden', i!==n));
+      for (let i=1;i<=3;i++){ const node=document.getElementById('node-'+i); node.classList.remove('on','done'); if(i<n)node.classList.add('done'); if(i===n)node.classList.add('on'); }
+      document.getElementById('line-1').style.background = n>=2 ? 'var(--accent)' : 'var(--line)';
+      document.getElementById('line-2').style.background = n>=3 ? 'var(--accent)' : 'var(--line)';
+      if (n===3) generateLink();
+      if (window.gsap) gsap.fromTo('#step-'+n, {opacity:0, y:16}, {opacity:1, y:0, duration:.5, ease:'power3.out'});
+      document.getElementById('setup').scrollIntoView({behavior:'smooth', block:'start'});
     }
 
-    function setProviderType(type) {
-      currentProviderType = type;
-      if (type === 'xtream') {
-        document.getElementById('xtream-fields').classList.remove('hidden');
-        document.getElementById('m3u-fields').classList.add('hidden');
-
-        document.getElementById('btn-xtream').className = "flex items-center justify-center gap-3 p-4 rounded-2xl border-2 border-indigo-500 bg-indigo-500/10 text-white font-bold transition-all";
-        document.getElementById('btn-m3u').className = "flex items-center justify-center gap-3 p-4 rounded-2xl border border-white/10 bg-white/5 text-slate-400 hover:text-white font-bold transition-all";
-      } else {
-        document.getElementById('xtream-fields').classList.add('hidden');
-        document.getElementById('m3u-fields').classList.remove('hidden');
-
-        document.getElementById('btn-m3u').className = "flex items-center justify-center gap-3 p-4 rounded-2xl border-2 border-pink-500 bg-pink-500/10 text-white font-bold transition-all";
-        document.getElementById('btn-xtream').className = "flex items-center justify-center gap-3 p-4 rounded-2xl border border-white/10 bg-white/5 text-slate-400 hover:text-white font-bold transition-all";
-      }
-    }
-
-    async function testConnection() {
-      const btn = document.getElementById('btn-test');
-      const box = document.getElementById('status-box');
-      btn.disabled = true;
-      btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Testing Connection...`;
+    function setProviderType(type){
+      providerType = type; const xt = type==='xtream';
+      document.getElementById('card-xtream').classList.toggle('on', xt);
+      document.getElementById('card-m3u').classList.toggle('on', !xt);
+      document.getElementById('dot-xtream').className = xt ? 'w-2.5 h-2.5 rounded-full bg-[var(--accent)]' : 'w-2.5 h-2.5 rounded-full border border-[var(--line)]';
+      document.getElementById('dot-m3u').className = !xt ? 'w-2.5 h-2.5 rounded-full bg-[var(--accent)]' : 'w-2.5 h-2.5 rounded-full border border-[var(--line)]';
+      document.getElementById('xtream-fields').classList.toggle('hidden', !xt);
+      document.getElementById('m3u-fields').classList.toggle('hidden', xt);
       lucide.createIcons();
+    }
 
-      const payload = {
-        type: currentProviderType,
-        host: document.getElementById('xtream-host').value,
-        username: document.getElementById('xtream-user').value,
-        password: document.getElementById('xtream-pass').value,
-        m3uUrl: document.getElementById('m3u-url').value,
-        tmdbApiKey: document.getElementById('tmdb-key').value
-      };
+    function toast(msg){
+      const t=document.getElementById('toast'); document.getElementById('toast-text').innerText=msg;
+      t.style.transform='translate(-50%,0)'; t.style.opacity='1';
+      setTimeout(()=>{t.style.transform='translate(-50%,-160%)'; t.style.opacity='0';},2200);
+    }
 
-      try {
-        const res = await fetch('/api/test-connection', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        const data = await res.json();
-        box.classList.remove('hidden');
-
-        if (data.success) {
-          box.className = "p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-sm flex items-start gap-3";
-          document.getElementById('status-icon').setAttribute('data-lucide', 'check-circle');
-          document.getElementById('status-title').innerText = "Connected Successfully!";
-          document.getElementById('status-msg').innerText = data.message;
-
-          if (data.categories) {
-            fetchedCategories = data.categories;
-            renderCategories(fetchedCategories);
-          }
+    async function testConnection(){
+      const btn=document.getElementById('btn-test'), box=document.getElementById('status-box');
+      btn.disabled=true; btn.innerHTML='<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Testing…'; lucide.createIcons();
+      const payload={ type:providerType, host:val('xtream-host'), username:val('xtream-user'), password:val('xtream-pass'), m3uUrl:val('m3u-url'), tmdbApiKey:val('tmdb-key') };
+      try{
+        const res=await fetch('/api/test-connection',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        const data=await res.json(); box.classList.remove('hidden'); box.classList.add('flex');
+        if(data.success){
+          box.className='rounded-2xl border border-[var(--accent)]/40 bg-[rgba(255,94,43,0.08)] text-[var(--accent)] p-4 text-sm flex items-start gap-3';
+          box.innerHTML='<i data-lucide="check-circle" class="w-5 h-5 mt-0.5 shrink-0"></i><div><p class="font-semibold mb-0.5">Connected</p><p class="text-xs opacity-80 text-[var(--paper)]/70">'+esc(data.message)+'</p></div>';
+          categories=data.categories||[]; renderCats();
+          const next=document.getElementById('next-1'); next.classList.remove('opacity-30','pointer-events-none');
         } else {
-          box.className = "p-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 text-rose-300 text-sm flex items-start gap-3";
-          document.getElementById('status-icon').setAttribute('data-lucide', 'alert-triangle');
-          document.getElementById('status-title').innerText = "Connection Failed";
-          document.getElementById('status-msg').innerText = data.error || "Please verify credentials and host URL.";
+          box.className='rounded-2xl border border-rose-500/40 bg-rose-500/10 text-rose-300 p-4 text-sm flex items-start gap-3';
+          box.innerHTML='<i data-lucide="alert-triangle" class="w-5 h-5 mt-0.5 shrink-0"></i><div><p class="font-semibold mb-0.5">Connection failed</p><p class="text-xs opacity-80">'+esc(data.error||'Check your details.')+'</p></div>';
         }
-      } catch (e) {
+      }catch(e){
         box.classList.remove('hidden');
-        box.className = "p-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 text-rose-300 text-sm flex items-start gap-3";
-        document.getElementById('status-title').innerText = "Network Error";
-        document.getElementById('status-msg').innerText = e.message;
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = `<i data-lucide="zap" class="w-4 h-4"></i> Test Connection & Load Categories`;
-        lucide.createIcons();
+        box.className='rounded-2xl border border-rose-500/40 bg-rose-500/10 text-rose-300 p-4 text-sm flex items-start gap-3';
+        box.innerHTML='<i data-lucide="wifi-off" class="w-5 h-5 mt-0.5 shrink-0"></i><div><p class="font-semibold mb-0.5">Network error</p><p class="text-xs opacity-80">'+esc(e.message)+'</p></div>';
+      }finally{
+        btn.disabled=false; btn.innerHTML='<i data-lucide="zap" class="w-4 h-4"></i> Test connection & load content'; lucide.createIcons();
       }
     }
 
-    function renderCategories(cats) {
-      const container = document.getElementById('category-pill-container');
-      if (!cats || cats.length === 0) {
-        container.innerHTML = `<p class="text-xs text-slate-500 p-2">No categories found.</p>`;
-        return;
-      }
-
-      container.innerHTML = cats.map(cat => `
-        <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:border-indigo-500/50 cursor-pointer transition-all">
-          <input type="checkbox" value="${cat.id}" checked class="cat-checkbox w-3.5 h-3.5 accent-indigo-500 rounded">
-          <span class="text-xs text-slate-300 font-medium">${cat.name}</span>
-        </label>
-      `).join('');
+    function renderCats(){
+      const c=document.getElementById('cat-container');
+      if(!categories.length){c.innerHTML='<p class="text-xs text-[var(--muted)] p-2">No categories found.</p>';return;}
+      c.innerHTML=categories.map(cat=>
+        '<label class="pill on inline-flex items-center gap-2 px-3 py-1.5 rounded-full cursor-pointer" data-name="'+esc((cat.name||'').toLowerCase())+'">'+
+        '<input type="checkbox" value="'+esc(cat.id)+'" checked class="cat-cb w-3.5 h-3.5 accent-[var(--accent)]" onchange="syncPill(this)">'+
+        '<span class="text-xs text-[var(--paper)]/80">'+esc(cat.name)+'</span></label>').join('');
+      updateCatCount(); lucide.createIcons();
     }
+    function syncPill(cb){ cb.closest('.pill').classList.toggle('on', cb.checked); updateCatCount(); }
+    function toggleAllCats(on){ document.querySelectorAll('.cat-cb').forEach(cb=>{cb.checked=on;syncPill(cb);}); }
+    function filterCatPills(){ const q=val('cat-search').toLowerCase(); document.querySelectorAll('#cat-container .pill').forEach(p=>{p.style.display=p.getAttribute('data-name').includes(q)?'':'none';}); }
+    function updateCatCount(){ const total=document.querySelectorAll('.cat-cb').length, on=document.querySelectorAll('.cat-cb:checked').length; document.getElementById('cat-count').innerText= total? '· '+on+'/'+total+' selected':''; }
 
-    function toggleAllCategories(selectAll) {
-      document.querySelectorAll('.cat-checkbox').forEach(cb => cb.checked = selectAll);
+    function buildConfig(){
+      const cats=Array.from(document.querySelectorAll('.cat-cb:checked')).map(cb=>cb.value);
+      return { type:providerType, host:val('xtream-host'), username:val('xtream-user'), password:val('xtream-pass'), m3uUrl:val('m3u-url'), tmdbApiKey:val('tmdb-key'),
+        includeLive:document.getElementById('inc-live').checked, includeMovies:document.getElementById('inc-movies').checked, includeSeries:document.getElementById('inc-series').checked, includedCategories:cats };
     }
-
-    function buildConfigObject() {
-      const selectedCats = Array.from(document.querySelectorAll('.cat-checkbox:checked')).map(cb => cb.value);
-
-      return {
-        type: currentProviderType,
-        host: document.getElementById('xtream-host').value,
-        username: document.getElementById('xtream-user').value,
-        password: document.getElementById('xtream-pass').value,
-        m3uUrl: document.getElementById('m3u-url').value,
-        tmdbApiKey: document.getElementById('tmdb-key').value,
-        includeLive: document.getElementById('inc-live').checked,
-        includeMovies: document.getElementById('inc-movies').checked,
-        includeSeries: document.getElementById('inc-series').checked,
-        includedCategories: selectedCats
-      };
+    function generateLink(){
+      const compressed=LZString.compressToEncodedURIComponent(JSON.stringify(buildConfig()));
+      const https=window.location.origin+'/'+compressed+'/manifest.json';
+      document.getElementById('manifest-url').value=https;
+      document.getElementById('stremio-btn').href=https.replace(/^https?:\/\//,'stremio://');
     }
+    function copyManifest(){ const i=document.getElementById('manifest-url'); navigator.clipboard.writeText(i.value).then(()=>toast('Manifest URL copied')); }
+    function val(id){ const el=document.getElementById(id); return el?el.value:''; }
+    function esc(s){ return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
-    function generateInstallLink() {
-      const config = buildConfigObject();
-      const jsonStr = JSON.stringify(config);
-      const compressed = LZString.compressToEncodedURIComponent(jsonStr);
+    /* =================== MARQUEE =================== */
+    (function(){
+      const words=['Xtream Codes','M3U','TMDB','IMDB','Live TV','Movies','Series','Global Search','Serverless','Nuvio','Stremio','Vercel'];
+      const seq=words.concat(words); // duplicate for seamless loop
+      const track=document.getElementById('marquee-track');
+      track.innerHTML=seq.map(w=>'<span class="flex items-center gap-12"><span class="display text-4xl text-[var(--paper)]/80">'+w+'</span><span class="w-2 h-2 rounded-full bg-[var(--accent)]"></span></span>').join('');
+    })();
 
-      const baseUrl = window.location.origin;
-      const manifestHttps = `${baseUrl}/${compressed}/manifest.json`;
-      const manifestStremio = manifestHttps.replace(/^https?:\/\//, 'stremio://');
-
-      document.getElementById('manifest-url-input').value = manifestHttps;
-      document.getElementById('stremio-btn').href = manifestStremio;
-    }
-
-    function copyManifestUrl() {
-      const input = document.getElementById('manifest-url-input');
-      input.select();
-      navigator.clipboard.writeText(input.value);
-      alert('Manifest URL copied to clipboard!');
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
+    /* =================== GSAP MOTION =================== */
+    document.addEventListener('DOMContentLoaded', ()=>{
       lucide.createIcons();
+      if(!window.gsap) return;
+      gsap.registerPlugin(ScrollTrigger);
+
+      // Hero intro timeline
+      const tl = gsap.timeline({ defaults:{ ease:'power4.out' } });
+      gsap.set('[data-hero-line]', { yPercent: 110 });
+      tl.to('[data-hero-line]', { yPercent: 0, duration: 1.1, stagger: 0.12 }, 0.15)
+        .from('[data-hero-tag]', { opacity: 0, y: 12, stagger: 0.08, duration: 0.6 }, 0.2)
+        .from('[data-hero-sub]', { opacity: 0, y: 20, duration: 0.8 }, 0.6)
+        .from('[data-hero-cta]', { opacity: 0, y: 20, duration: 0.8 }, 0.72)
+        .from('[data-hero-scroll]', { opacity: 0, duration: 0.8 }, 0.9);
+
+      // Scroll reveals
+      gsap.utils.toArray('[data-reveal]').forEach(el=>{
+        gsap.from(el, { opacity:0, y:40, duration:0.9, ease:'power3.out',
+          scrollTrigger:{ trigger:el, start:'top 85%' } });
+      });
+
+      // Parallax drift on hero heading while scrolling
+      gsap.to('h1.display', { yPercent: 18, ease:'none',
+        scrollTrigger:{ trigger:'header', start:'top top', end:'bottom top', scrub:true } });
+
+      // Scroll hint fade out
+      gsap.to('[data-hero-scroll]', { opacity:0, ease:'none',
+        scrollTrigger:{ trigger:'header', start:'top top', end:'40% top', scrub:true } });
     });
+
+    /* =================== CURSOR + MAGNETIC =================== */
+    (function(){
+      const cursor=document.getElementById('cursor');
+      let cx=innerWidth/2, cy=innerHeight/2, tx=cx, ty=cy;
+      addEventListener('mousemove', e=>{ tx=e.clientX; ty=e.clientY; });
+      (function loop(){ cx+=(tx-cx)*0.2; cy+=(ty-cy)*0.2; cursor.style.left=cx+'px'; cursor.style.top=cy+'px'; requestAnimationFrame(loop); })();
+      const grow=()=>cursor.classList.add('big'), shrink=()=>cursor.classList.remove('big');
+      document.querySelectorAll('[data-cursor-big]').forEach(el=>{ el.addEventListener('mouseenter',grow); el.addEventListener('mouseleave',shrink); });
+
+      // Magnetic buttons
+      document.querySelectorAll('[data-magnetic]').forEach(el=>{
+        el.addEventListener('mousemove', e=>{
+          const r=el.getBoundingClientRect();
+          const mx=e.clientX-(r.left+r.width/2), my=e.clientY-(r.top+r.height/2);
+          if(window.gsap) gsap.to(el,{ x:mx*0.3, y:my*0.4, duration:0.4, ease:'power3.out' });
+        });
+        el.addEventListener('mouseleave', ()=>{ if(window.gsap) gsap.to(el,{ x:0, y:0, duration:0.5, ease:'elastic.out(1,0.4)' }); });
+      });
+    })();
   </script>
 </body>
 </html>

@@ -5,10 +5,16 @@ exports.handleCatalog = handleCatalog;
 exports.handleMeta = handleMeta;
 exports.handleStream = handleStream;
 const config_1 = require("./utils/config");
-const xtream_1 = require("./iptv/xtream");
-const m3u_1 = require("./iptv/m3u");
+const provider_1 = require("./iptv/provider");
 const tmdb_1 = require("./tmdb/tmdb");
 const matcher_1 = require("./tmdb/matcher");
+function stremioTypeToKind(type) {
+    if (type === 'tv')
+        return 'channel';
+    if (type === 'movie')
+        return 'movie';
+    return 'series';
+}
 function getManifest(config) {
     const catalogs = [];
     if (config.includeLive !== false) {
@@ -62,18 +68,7 @@ async function handleCatalog(req, res) {
             if (match)
                 searchQuery = decodeURIComponent(match[1]);
         }
-        let items = [];
-        if (config.type === 'xtream' && config.host && config.username && config.password) {
-            const client = new xtream_1.XtreamClient(config.host, config.username, config.password);
-            const xtType = type === 'tv' ? 'live' : type === 'movie' ? 'movie' : 'series';
-            const streams = await client.getStreams(xtType);
-            items = streams;
-        }
-        else if (config.type === 'm3u' && config.m3uUrl) {
-            const parsed = await (0, m3u_1.parseM3UPlaylist)(config.m3uUrl, config.includedCategories);
-            const targetType = type === 'tv' ? 'channel' : type;
-            items = parsed.items.filter(item => item.type === targetType);
-        }
+        let items = await (0, provider_1.getItems)(config, stremioTypeToKind(type));
         // Filter search
         if (searchQuery) {
             const q = searchQuery.toLowerCase();
@@ -193,16 +188,7 @@ async function handleStream(req, res) {
             return;
         }
         // Fetch user streams to match against targetTitle
-        let availableStreams = [];
-        if (config.type === 'xtream' && config.host && config.username && config.password) {
-            const client = new xtream_1.XtreamClient(config.host, config.username, config.password);
-            const xtType = type === 'movie' ? 'movie' : type === 'series' ? 'series' : 'live';
-            availableStreams = await client.getStreams(xtType);
-        }
-        else if (config.type === 'm3u' && config.m3uUrl) {
-            const parsed = await (0, m3u_1.parseM3UPlaylist)(config.m3uUrl, config.includedCategories);
-            availableStreams = parsed.items.filter(item => item.type === (type === 'movie' ? 'movie' : type === 'series' ? 'series' : 'channel'));
-        }
+        const availableStreams = await (0, provider_1.getItems)(config, stremioTypeToKind(type));
         const streams = (0, matcher_1.filterAndSortMatchingStreams)(targetTitle, availableStreams, targetYear, targetSeason, targetEpisode);
         res.json({ streams });
     }

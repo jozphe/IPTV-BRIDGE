@@ -1,11 +1,15 @@
 import { Request, Response } from 'express';
 import { decodeConfig } from './utils/config';
 import { UserConfig, StremioManifest, StremioStream, StremioMeta } from './types';
-import { XtreamClient } from './iptv/xtream';
-import { parseM3UPlaylist } from './iptv/m3u';
+import { getItems, MediaKind } from './iptv/provider';
 import { TMDBClient } from './tmdb/tmdb';
 import { filterAndSortMatchingStreams } from './tmdb/matcher';
-import { cleanTitle } from './iptv/cleaner';
+
+function stremioTypeToKind(type: string): MediaKind {
+  if (type === 'tv') return 'channel';
+  if (type === 'movie') return 'movie';
+  return 'series';
+}
 
 export function getManifest(config: UserConfig): StremioManifest {
   const catalogs = [];
@@ -66,19 +70,7 @@ export async function handleCatalog(req: Request, res: Response) {
       if (match) searchQuery = decodeURIComponent(match[1]);
     }
 
-    let items: any[] = [];
-
-    if (config.type === 'xtream' && config.host && config.username && config.password) {
-      const client = new XtreamClient(config.host, config.username, config.password);
-      const xtType = type === 'tv' ? 'live' : type === 'movie' ? 'movie' : 'series';
-      const streams = await client.getStreams(xtType);
-
-      items = streams;
-    } else if (config.type === 'm3u' && config.m3uUrl) {
-      const parsed = await parseM3UPlaylist(config.m3uUrl, config.includedCategories);
-      const targetType = type === 'tv' ? 'channel' : type;
-      items = parsed.items.filter(item => item.type === targetType);
-    }
+    let items = await getItems(config, stremioTypeToKind(type));
 
     // Filter search
     if (searchQuery) {
@@ -209,16 +201,7 @@ export async function handleStream(req: Request, res: Response) {
     }
 
     // Fetch user streams to match against targetTitle
-    let availableStreams: any[] = [];
-
-    if (config.type === 'xtream' && config.host && config.username && config.password) {
-      const client = new XtreamClient(config.host, config.username, config.password);
-      const xtType = type === 'movie' ? 'movie' : type === 'series' ? 'series' : 'live';
-      availableStreams = await client.getStreams(xtType);
-    } else if (config.type === 'm3u' && config.m3uUrl) {
-      const parsed = await parseM3UPlaylist(config.m3uUrl, config.includedCategories);
-      availableStreams = parsed.items.filter(item => item.type === (type === 'movie' ? 'movie' : type === 'series' ? 'series' : 'channel'));
-    }
+    const availableStreams = await getItems(config, stremioTypeToKind(type));
 
     const streams = filterAndSortMatchingStreams(
       targetTitle,

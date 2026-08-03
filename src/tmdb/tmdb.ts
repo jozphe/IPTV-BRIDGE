@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { StremioMeta } from '../types';
+import { cached, TTL } from '../utils/cache';
 
 export class TMDBClient {
   private apiKey: string;
@@ -11,35 +12,39 @@ export class TMDBClient {
   }
 
   public async getByImdbId(imdbId: string): Promise<{ type: 'movie' | 'series'; details: any } | null> {
-    try {
-      const url = `${this.baseUrl}/find/${encodeURIComponent(imdbId)}?api_key=${this.apiKey}&external_source=imdb_id`;
-      const res = await axios.get(url, { timeout: 8000 });
-      const data = res.data;
+    return cached(`tmdb:find:${imdbId}`, TTL.TMDB, async () => {
+      try {
+        const url = `${this.baseUrl}/find/${encodeURIComponent(imdbId)}?api_key=${this.apiKey}&external_source=imdb_id`;
+        const res = await axios.get(url, { timeout: 8000 });
+        const data = res.data;
 
-      if (data.movie_results && data.movie_results.length > 0) {
-        return { type: 'movie', details: data.movie_results[0] };
+        if (data.movie_results && data.movie_results.length > 0) {
+          return { type: 'movie' as const, details: data.movie_results[0] };
+        }
+        if (data.tv_results && data.tv_results.length > 0) {
+          return { type: 'series' as const, details: data.tv_results[0] };
+        }
+        return null;
+      } catch (err) {
+        console.error(`TMDB lookup by IMDB ID ${imdbId} failed:`, err);
+        return null;
       }
-      if (data.tv_results && data.tv_results.length > 0) {
-        return { type: 'series', details: data.tv_results[0] };
-      }
-      return null;
-    } catch (err) {
-      console.error(`TMDB lookup by IMDB ID ${imdbId} failed:`, err);
-      return null;
-    }
+    });
   }
 
   public async getByTmdbId(tmdbId: number | string, type: 'movie' | 'series'): Promise<any | null> {
-    try {
-      const endpoint = type === 'movie' ? 'movie' : 'tv';
-      const cleanId = String(tmdbId).replace(/^tmdb:/, '');
-      const url = `${this.baseUrl}/${endpoint}/${encodeURIComponent(cleanId)}?api_key=${this.apiKey}&append_to_response=external_ids,credits`;
-      const res = await axios.get(url, { timeout: 8000 });
-      return res.data;
-    } catch (err) {
-      console.error(`TMDB lookup by ID ${tmdbId} failed:`, err);
-      return null;
-    }
+    const cleanId = String(tmdbId).replace(/^tmdb:/, '');
+    return cached(`tmdb:${type}:${cleanId}`, TTL.TMDB, async () => {
+      try {
+        const endpoint = type === 'movie' ? 'movie' : 'tv';
+        const url = `${this.baseUrl}/${endpoint}/${encodeURIComponent(cleanId)}?api_key=${this.apiKey}&append_to_response=external_ids,credits`;
+        const res = await axios.get(url, { timeout: 8000 });
+        return res.data;
+      } catch (err) {
+        console.error(`TMDB lookup by ID ${tmdbId} failed:`, err);
+        return null;
+      }
+    });
   }
 
   public async searchMedia(query: string, type: 'movie' | 'series' | 'all' = 'all'): Promise<any[]> {
