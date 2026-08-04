@@ -27,6 +27,12 @@ app.get('/', (req, res) => {
 app.get('/configure', (req, res) => {
     res.sendFile(path_1.default.join(__dirname, '../public/configure.html'));
 });
+// Stremio/Nuvio append `/configure` to the addon's base URL. For a configured
+// install that base URL already contains the encoded config, so the request is
+// `/<config>/configure`. Serve the same page (it self-hydrates from the path).
+app.get('/:config/configure', (req, res) => {
+    res.sendFile(path_1.default.join(__dirname, '../public/configure.html'));
+});
 // Real-time IPTV Connection Test API
 app.post('/api/test-connection', testConnection_1.handleTestConnection);
 // Manifest routes

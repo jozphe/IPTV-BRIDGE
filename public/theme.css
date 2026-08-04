@@ -40,6 +40,21 @@ body {
 .ember:hover { box-shadow: 0 0 0 1px var(--accent), 0 18px 50px -12px rgba(255,94,43,0.6); }
 .ghost { border: 1px solid var(--line); transition: border-color .25s ease, background .25s ease; }
 .ghost:hover { border-color: var(--paper); background: rgba(244,240,232,0.04); }
+
+/* Glassmorphism secondary button (hero "The method") */
+.glass-btn {
+  border: 1px solid rgba(244, 240, 232, 0.14);
+  background: rgba(244, 240, 232, 0.05);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  color: var(--paper);
+  transition: border-color .25s ease, background .25s ease, box-shadow .25s ease;
+}
+.glass-btn:hover {
+  border-color: rgba(255, 94, 43, 0.4);
+  background: rgba(244, 240, 232, 0.08);
+  box-shadow: 0 8px 30px -12px rgba(0,0,0,0.6);
+}
 .pcard { border: 1px solid var(--line); transition: border-color .25s ease, background .25s ease, transform .25s ease; }
 .pcard.on { border-color: var(--accent); background: rgba(255,94,43,0.06); }
 .snode { border: 1px solid var(--line); color: var(--muted); transition: all .35s ease; font-family: 'Instrument Serif', serif; }
@@ -55,6 +70,78 @@ body {
 .ul:hover { background-size: 100% 1px; }
 [data-reveal] { will-change: transform, opacity; }
 
+/* ---------- Stat cells ---------- */
+.stat { transition: background .3s ease; }
+.stat:hover { background: rgba(255, 94, 43, 0.04); }
+.stat::after {
+  content: ''; position: absolute; left: 0; bottom: 0; height: 2px; width: 0;
+  background: var(--accent); transition: width .4s cubic-bezier(.2,.8,.2,1);
+}
+.stat:hover::after { width: 100%; }
+
+/* ---------- Format cards ---------- */
+.format-card { transition: border-color .3s ease, transform .3s ease, background .3s ease; }
+.format-card:hover { border-color: rgba(255, 94, 43, 0.4); transform: translateY(-3px); background: rgba(255, 94, 43, 0.03); }
+.format-card::before {
+  content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity .4s ease;
+  background: radial-gradient(120% 80% at 100% 0%, rgba(255,94,43,0.12), transparent 60%);
+  pointer-events: none;
+}
+.format-card:hover::before { opacity: 1; }
+
+/* ---------- Pipeline + stack cards ---------- */
+.pipe { transition: border-color .3s ease, transform .3s ease, background .3s ease; }
+.pipe:hover { border-color: rgba(255, 94, 43, 0.4); transform: translateY(-3px); }
+.stack-card { transition: border-color .3s ease, transform .3s ease, background .3s ease; }
+.stack-card:hover { border-color: rgba(255, 94, 43, 0.35); transform: translateY(-3px); background: rgba(255, 94, 43, 0.03); }
+
+/* ---------- Method cards ---------- */
+.method-card {
+  transition: border-color .35s ease, transform .35s ease, background .35s ease;
+}
+.method-card:hover { border-color: rgba(255,94,43,0.35); transform: translateY(-4px); background: rgba(255,94,43,0.03); }
+.method-card::before {
+  content: ''; position: absolute; left: 0; top: 0; height: 100%; width: 3px;
+  background: var(--accent); transform: scaleY(0); transform-origin: top;
+  transition: transform .4s cubic-bezier(.2,.8,.2,1);
+}
+.method-card:hover::before { transform: scaleY(1); }
+/* Staggered entrance (JS toggles .in) — no layout-shift glitch */
+.method-card { opacity: 0; transform: translateY(28px); }
+.method-card.in { opacity: 1; transform: translateY(0); transition: opacity .6s ease, transform .6s cubic-bezier(.2,.8,.2,1); }
+
+/* ---------- Under the hood: signal flow ---------- */
+.flow-pulse {
+  left: 8%;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  box-shadow: 0 0 12px rgba(255, 94, 43, 0.6);
+  animation: flowMove 3.6s cubic-bezier(.45,0,.55,1) infinite;
+  opacity: 0.9;
+}
+@keyframes flowMove {
+  0%   { transform: translateX(0); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateX(760px); opacity: 0; }
+}
+.flow-node .fdot { transition: border-color .3s ease, transform .3s ease, box-shadow .3s ease; }
+.flow-node:hover .fdot { transform: translateY(-4px); box-shadow: 0 0 22px -6px rgba(255,94,43,0.5); }
+.fdot-end { box-shadow: 0 0 20px -4px rgba(255,94,43,0.45); }
+
+/* ---------- Under the hood: bento ---------- */
+.bento { transition: border-color .3s ease, transform .3s ease, background .3s ease; }
+.bento:hover { border-color: rgba(255,94,43,0.4); transform: translateY(-3px); background: rgba(255,94,43,0.03); }
+.bento::before {
+  content: ''; position: absolute; inset: 0; opacity: 0; transition: opacity .4s ease; pointer-events: none;
+  background: radial-gradient(130% 90% at 100% 0%, rgba(255,94,43,0.12), transparent 55%);
+}
+.bento:hover::before { opacity: 1; }
+.bento-tags { transition: border-color .3s ease; }
+.bento-tags:hover { border-color: rgba(255,94,43,0.25); }
+
+.hood-row { transition: background .25s ease, padding-left .25s ease; border-radius: 10px; }
+.hood-row:hover { background: rgba(255,94,43,0.04); padding-left: 8px; }
+
 /* ---------- Glass navbar ---------- */
 #nav { border-bottom: 1px solid transparent; }
 #nav.scrolled {
@@ -64,22 +151,5 @@ body {
   border-bottom: 1px solid var(--line);
   padding-top: 0.65rem;
   padding-bottom: 0.65rem;
-}
-
-/* ---------- Hero 3D object (top-right) ---------- */
-.hero-3d {
-  position: absolute;
-  top: 50%;
-  right: -6vw;
-  transform: translateY(-50%);
-  width: 46vw;
-  height: 46vw;
-  max-width: 640px;
-  max-height: 640px;
-  pointer-events: none;
-  z-index: 1;
-}
-@media (max-width: 768px) {
-  .hero-3d { top: 14%; right: -18vw; width: 78vw; height: 78vw; opacity: 0.55; transform: none; }
 }
 

@@ -302,7 +302,7 @@ async function resolveGlobalStreams(config, id, type) {
         // Series entries won't have SxxEyy in the title, so don't episode-filter here
         targetSeason: config.type === 'm3u' ? season : undefined,
         targetEpisode: config.type === 'm3u' ? episode : undefined,
-        minScore: 0.5
+        minScore: 0.82
     });
     if (!matches.length)
         return [];

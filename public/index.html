@@ -13,7 +13,6 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script>
     tailwind.config = { theme: { extend: { fontFamily: {
       serif: ['"Instrument Serif"','serif'], sans: ['"Space Grotesk"','sans-serif'], mono: ['"JetBrains Mono"','monospace'] } } } };
@@ -37,13 +36,11 @@
       <a href="#stack" class="ul" data-cursor>Stack</a>
       <a href="#faq" class="ul" data-cursor>FAQ</a>
     </div>
-    <a href="/configure" class="text-sm font-semibold ember px-4 py-2 rounded-full font-sans" data-cursor>Build →</a>
+    <a href="/configure" class="text-sm font-semibold ember px-4 py-2 rounded-full font-sans inline-flex items-center gap-1.5 leading-none" data-cursor><span>Configure</span> <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i></a>
   </nav>
 
   <!-- HERO -->
   <header class="relative z-10 min-h-screen flex flex-col justify-center px-5 sm:px-10 pt-24 pb-16 overflow-hidden">
-    <!-- 3D object, top-right -->
-    <canvas id="hero3d" class="hero-3d" data-hero-3d></canvas>
     <div class="max-w-[1400px] mx-auto w-full relative z-10">
       <div class="flex items-center gap-3 mb-8 flex-wrap">
         <span data-hero-tag class="text-xs font-sans tracking-[0.25em] uppercase text-[var(--muted)]">Serverless</span>
@@ -63,10 +60,12 @@
           Xtream Codes or an M3U link becomes organized catalogs, global search, and automatic TMDB matching — every film and show resolves straight to your own sources.
         </p>
         <div data-hero-cta class="flex flex-col sm:flex-row md:justify-end gap-3">
-          <a href="/configure" class="ember px-7 py-4 rounded-full font-sans font-semibold text-sm flex items-center justify-center gap-2" data-magnetic data-cursor-big>
-            Build my addon <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+          <a href="/configure" class="ember px-7 py-4 rounded-full font-sans font-semibold text-sm inline-flex items-center justify-center gap-2 leading-none" data-magnetic data-cursor-big>
+            <span>Configure</span> <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
           </a>
-          <a href="#how" class="ghost px-7 py-4 rounded-full font-sans font-semibold text-sm flex items-center justify-center gap-2" data-cursor>The method</a>
+          <a href="#how" class="glass-btn px-7 py-4 rounded-full font-sans font-semibold text-sm inline-flex items-center justify-center gap-2 leading-none" data-cursor>
+            <span>The method</span>
+          </a>
         </div>
       </div>
     </div>
@@ -83,36 +82,131 @@
   </section>
 
   <!-- STATS -->
-  <section class="relative z-10 px-5 sm:px-10 py-16 border-b border-[var(--line)]">
-    <div class="max-w-[1400px] mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
-      <div data-reveal><p class="display text-6xl text-[var(--accent)]">2</p><p class="text-sm text-[var(--muted)] font-sans mt-1">Provider formats — Xtream & M3U</p></div>
-      <div data-reveal><p class="display text-6xl">3</p><p class="text-sm text-[var(--muted)] font-sans mt-1">Catalog types — TV, Movies, Series</p></div>
-      <div data-reveal><p class="display text-6xl">0</p><p class="text-sm text-[var(--muted)] font-sans mt-1">Databases or servers to run</p></div>
-      <div data-reveal><p class="display text-6xl">$0</p><p class="text-sm text-[var(--muted)] font-sans mt-1">Hosting cost on Vercel free tier</p></div>
+  <section class="relative z-10 px-5 sm:px-10 py-20 border-b border-[var(--line)]">
+    <div class="max-w-[1400px] mx-auto">
+      <div class="grid grid-cols-2 lg:grid-cols-4 rounded-3xl overflow-hidden border border-[var(--line)] divide-x divide-y lg:divide-y-0 divide-[var(--line)]">
+        <div class="stat group relative p-7 sm:p-9" data-reveal data-cursor>
+          <div class="flex items-center gap-2 mb-5 text-[var(--muted)]">
+            <i data-lucide="plug-zap" class="w-4 h-4"></i>
+            <span class="text-[11px] font-sans uppercase tracking-[0.2em]">Inputs</span>
+          </div>
+          <p class="display text-6xl sm:text-7xl text-[var(--accent)] leading-none">2</p>
+          <p class="text-sm text-[var(--paper)]/70 font-sans mt-3 font-medium">Provider formats</p>
+          <p class="text-xs text-[var(--muted)] font-sans mt-1">Xtream Codes &amp; M3U / M3U8</p>
+        </div>
+        <div class="stat group relative p-7 sm:p-9" data-reveal data-cursor>
+          <div class="flex items-center gap-2 mb-5 text-[var(--muted)]">
+            <i data-lucide="layout-grid" class="w-4 h-4"></i>
+            <span class="text-[11px] font-sans uppercase tracking-[0.2em]">Catalogs</span>
+          </div>
+          <p class="display text-6xl sm:text-7xl leading-none group-hover:text-[var(--accent)] transition-colors">3</p>
+          <p class="text-sm text-[var(--paper)]/70 font-sans mt-3 font-medium">Content types</p>
+          <p class="text-xs text-[var(--muted)] font-sans mt-1">Live TV · Movies · Series</p>
+        </div>
+        <div class="stat group relative p-7 sm:p-9" data-reveal data-cursor>
+          <div class="flex items-center gap-2 mb-5 text-[var(--muted)]">
+            <i data-lucide="database" class="w-4 h-4"></i>
+            <span class="text-[11px] font-sans uppercase tracking-[0.2em]">Infra</span>
+          </div>
+          <p class="display text-6xl sm:text-7xl leading-none group-hover:text-[var(--accent)] transition-colors">0</p>
+          <p class="text-sm text-[var(--paper)]/70 font-sans mt-3 font-medium">Databases or servers</p>
+          <p class="text-xs text-[var(--muted)] font-sans mt-1">Fully stateless &amp; serverless</p>
+        </div>
+        <div class="stat group relative p-7 sm:p-9" data-reveal data-cursor>
+          <div class="flex items-center gap-2 mb-5 text-[var(--muted)]">
+            <i data-lucide="wallet" class="w-4 h-4"></i>
+            <span class="text-[11px] font-sans uppercase tracking-[0.2em]">Cost</span>
+          </div>
+          <p class="display text-6xl sm:text-7xl leading-none group-hover:text-[var(--accent)] transition-colors">$0</p>
+          <p class="text-sm text-[var(--paper)]/70 font-sans mt-3 font-medium">Hosting on Vercel</p>
+          <p class="text-xs text-[var(--muted)] font-sans mt-1">Runs on the free tier</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROVIDER FORMATS -->
+  <section class="relative z-10 px-5 sm:px-10 py-24 border-b border-[var(--line)]">
+    <div class="max-w-[1400px] mx-auto">
+      <div class="flex items-end justify-between mb-12 flex-wrap gap-4">
+        <div>
+          <p class="text-xs font-sans tracking-[0.25em] uppercase text-[var(--muted)] mb-3" data-reveal>Two ways in</p>
+          <h2 class="display text-5xl sm:text-7xl" data-reveal>Bring your own source</h2>
+        </div>
+        <a href="/configure" class="ghost px-5 py-3 rounded-full font-sans text-sm flex items-center gap-2" data-cursor data-reveal>
+          Connect now <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+        </a>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="format-card group relative border border-[var(--line)] rounded-3xl p-7 sm:p-9 overflow-hidden" data-reveal data-cursor>
+          <div class="flex items-center justify-between mb-6">
+            <div class="w-12 h-12 rounded-2xl bg-[rgba(255,94,43,0.1)] border border-[rgba(255,94,43,0.25)] grid place-items-center">
+              <i data-lucide="key-round" class="w-5 h-5 text-[var(--accent)]"></i>
+            </div>
+            <span class="text-[11px] font-sans uppercase tracking-[0.2em] text-[var(--muted)] px-3 py-1 rounded-full border border-[var(--line)]">Recommended</span>
+          </div>
+          <h3 class="text-2xl font-sans font-semibold mb-2">Xtream Codes API</h3>
+          <p class="text-sm text-[var(--paper)]/60 font-sans leading-relaxed mb-6">Host, username and password. We pull live, VOD and series categories directly — the cleanest, richest experience.</p>
+          <ul class="space-y-2.5 text-sm font-sans">
+            <li class="flex items-center gap-2.5 text-[var(--paper)]/75"><i data-lucide="check" class="w-4 h-4 text-[var(--accent)]"></i> Native category structure</li>
+            <li class="flex items-center gap-2.5 text-[var(--paper)]/75"><i data-lucide="check" class="w-4 h-4 text-[var(--accent)]"></i> Per-episode series resolution</li>
+            <li class="flex items-center gap-2.5 text-[var(--paper)]/75"><i data-lucide="check" class="w-4 h-4 text-[var(--accent)]"></i> Account status &amp; expiry check</li>
+          </ul>
+        </div>
+
+        <div class="format-card group relative border border-[var(--line)] rounded-3xl p-7 sm:p-9 overflow-hidden" data-reveal data-cursor>
+          <div class="flex items-center justify-between mb-6">
+            <div class="w-12 h-12 rounded-2xl bg-[rgba(244,240,232,0.05)] border border-[var(--line)] grid place-items-center">
+              <i data-lucide="link-2" class="w-5 h-5 text-[var(--paper)]/80"></i>
+            </div>
+            <span class="text-[11px] font-sans uppercase tracking-[0.2em] text-[var(--muted)] px-3 py-1 rounded-full border border-[var(--line)]">Universal</span>
+          </div>
+          <h3 class="text-2xl font-sans font-semibold mb-2">M3U / M3U8 Playlist</h3>
+          <p class="text-sm text-[var(--paper)]/60 font-sans leading-relaxed mb-6">Any single playlist URL. We parse group titles, logos and TVG metadata, then organize everything automatically.</p>
+          <ul class="space-y-2.5 text-sm font-sans">
+            <li class="flex items-center gap-2.5 text-[var(--paper)]/75"><i data-lucide="check" class="w-4 h-4 text-[var(--accent)]"></i> Works with any provider</li>
+            <li class="flex items-center gap-2.5 text-[var(--paper)]/75"><i data-lucide="check" class="w-4 h-4 text-[var(--accent)]"></i> Auto group &amp; type detection</li>
+            <li class="flex items-center gap-2.5 text-[var(--paper)]/75"><i data-lucide="check" class="w-4 h-4 text-[var(--accent)]"></i> Logo &amp; metadata extraction</li>
+          </ul>
+        </div>
+      </div>
     </div>
   </section>
 
   <!-- HOW / METHOD -->
   <section id="how" class="relative z-10 px-5 sm:px-10 py-28 sm:py-40">
     <div class="max-w-[1400px] mx-auto">
-      <div class="flex items-baseline justify-between mb-16 flex-wrap gap-4">
-        <h2 class="display text-6xl sm:text-8xl" data-reveal>The method</h2>
+      <div class="flex items-baseline justify-between mb-14 flex-wrap gap-4">
+        <div>
+          <p class="text-xs font-sans tracking-[0.25em] uppercase text-[var(--muted)] mb-3" data-reveal>How it works</p>
+          <h2 class="display text-6xl sm:text-8xl" data-reveal>The method</h2>
+        </div>
         <span class="text-sm font-sans text-[var(--muted)] max-w-xs" data-reveal>Three moving parts, one clean result inside your player.</span>
       </div>
-      <div class="grid md:grid-cols-3 gap-px bg-[var(--line)] rounded-3xl overflow-hidden">
-        <div class="bg-[var(--ink)] p-8 sm:p-10 group" data-reveal data-cursor>
-          <span class="display text-5xl text-[var(--muted)] group-hover:text-[var(--accent)] transition-colors">01</span>
-          <h3 class="text-2xl mt-6 mb-3 font-sans font-semibold">Connect</h3>
+      <div id="method-grid" class="grid md:grid-cols-3 gap-4">
+        <div class="method-card group relative border border-[var(--line)] rounded-3xl p-8 sm:p-9 overflow-hidden">
+          <div class="flex items-center justify-between mb-8">
+            <span class="method-num display text-6xl text-[var(--paper)]/15 group-hover:text-[var(--accent)] transition-colors duration-500">01</span>
+            <i data-lucide="plug-zap" class="w-5 h-5 text-[var(--accent)]"></i>
+          </div>
+          <h3 class="text-2xl mb-3 font-sans font-semibold">Connect</h3>
           <p class="text-[var(--paper)]/60 leading-relaxed font-sans text-sm">Drop in Xtream credentials or an M3U URL. We parse channels, movies and series in one pass and cache them warm.</p>
         </div>
-        <div class="bg-[var(--ink)] p-8 sm:p-10 group" data-reveal data-cursor>
-          <span class="display text-5xl text-[var(--muted)] group-hover:text-[var(--accent)] transition-colors">02</span>
-          <h3 class="text-2xl mt-6 mb-3 font-sans font-semibold">Resolve</h3>
+        <div class="method-card group relative border border-[var(--line)] rounded-3xl p-8 sm:p-9 overflow-hidden">
+          <div class="flex items-center justify-between mb-8">
+            <span class="method-num display text-6xl text-[var(--paper)]/15 group-hover:text-[var(--accent)] transition-colors duration-500">02</span>
+            <i data-lucide="clapperboard" class="w-5 h-5 text-[var(--accent)]"></i>
+          </div>
+          <h3 class="text-2xl mb-3 font-sans font-semibold">Resolve</h3>
           <p class="text-[var(--paper)]/60 leading-relaxed font-sans text-sm">Titles are cleaned of release tags and matched to TMDB — posters, years, ratings and IMDB/TMDB IDs all line up.</p>
         </div>
-        <div class="bg-[var(--ink)] p-8 sm:p-10 group" data-reveal data-cursor>
-          <span class="display text-5xl text-[var(--muted)] group-hover:text-[var(--accent)] transition-colors">03</span>
-          <h3 class="text-2xl mt-6 mb-3 font-sans font-semibold">Stream</h3>
+        <div class="method-card group relative border border-[var(--line)] rounded-3xl p-8 sm:p-9 overflow-hidden">
+          <div class="flex items-center justify-between mb-8">
+            <span class="method-num display text-6xl text-[var(--paper)]/15 group-hover:text-[var(--accent)] transition-colors duration-500">03</span>
+            <i data-lucide="play" class="w-5 h-5 text-[var(--accent)]"></i>
+          </div>
+          <h3 class="text-2xl mb-3 font-sans font-semibold">Stream</h3>
           <p class="text-[var(--paper)]/60 leading-relaxed font-sans text-sm">Search anything in Stremio or Nuvio and your own IPTV source appears as a playable stream. One tap, it plays.</p>
         </div>
       </div>
@@ -133,35 +227,105 @@
   </section>
 
   <!-- ARCHITECTURE / STACK -->
-  <section id="stack" class="relative z-10 px-5 sm:px-10 py-28 border-t border-[var(--line)]">
+  <section id="stack" class="relative z-10 px-5 sm:px-10 py-20 border-t border-[var(--line)]">
     <div class="max-w-[1400px] mx-auto">
-      <div class="flex items-baseline justify-between mb-14 flex-wrap gap-4">
-        <h2 class="display text-6xl sm:text-8xl" data-reveal>Under the hood</h2>
-        <a href="https://github.com" target="_blank" class="ghost px-5 py-3 rounded-full font-sans text-sm flex items-center gap-2" data-cursor><i data-lucide="github" class="w-4 h-4"></i> Source on GitHub</a>
+      <div class="flex items-center justify-between mb-12 flex-wrap gap-4">
+        <div>
+          <p class="text-xs font-sans tracking-[0.25em] uppercase text-[var(--muted)] mb-3" data-reveal>Architecture</p>
+          <h2 class="display text-5xl sm:text-7xl" data-reveal>Under the hood</h2>
+        </div>
+        <a href="https://github.com/jozphe/IPTV-BRIDGE" target="_blank" class="ghost px-5 py-2.5 rounded-full font-sans text-sm inline-flex items-center gap-2 leading-none shrink-0" data-cursor data-reveal><i data-lucide="github" class="w-4 h-4"></i> <span>Source</span></a>
       </div>
 
-      <!-- Pipeline diagram -->
-      <div class="border border-[var(--line)] rounded-3xl p-6 sm:p-10 mb-10 overflow-x-auto" data-reveal>
-        <div class="flex items-center gap-4 min-w-[720px] font-sans text-xs">
-          <div class="flex-1 border border-[var(--line)] rounded-2xl p-4 text-center"><i data-lucide="key-round" class="w-5 h-5 text-[var(--accent)] mx-auto mb-2"></i>Xtream / M3U</div>
-          <i data-lucide="arrow-right" class="w-5 h-5 text-[var(--muted)] shrink-0"></i>
-          <div class="flex-1 border border-[var(--line)] rounded-2xl p-4 text-center"><i data-lucide="filter" class="w-5 h-5 text-[var(--accent)] mx-auto mb-2"></i>Parse + Clean + Cache</div>
-          <i data-lucide="arrow-right" class="w-5 h-5 text-[var(--muted)] shrink-0"></i>
-          <div class="flex-1 border border-[var(--line)] rounded-2xl p-4 text-center"><i data-lucide="clapperboard" class="w-5 h-5 text-[var(--accent)] mx-auto mb-2"></i>TMDB Resolver</div>
-          <i data-lucide="arrow-right" class="w-5 h-5 text-[var(--muted)] shrink-0"></i>
-          <div class="flex-1 border border-[var(--line)] rounded-2xl p-4 text-center"><i data-lucide="git-compare" class="w-5 h-5 text-[var(--accent)] mx-auto mb-2"></i>Fuzzy Matcher</div>
-          <i data-lucide="arrow-right" class="w-5 h-5 text-[var(--muted)] shrink-0"></i>
-          <div class="flex-1 border border-[var(--accent) ] rounded-2xl p-4 text-center bg-[rgba(255,94,43,0.06)]"><i data-lucide="tv" class="w-5 h-5 text-[var(--accent)] mx-auto mb-2"></i>Stremio / Nuvio</div>
+      <!-- Horizontal signal flow with a travelling ember pulse -->
+      <div id="flow" class="relative mb-4 overflow-x-auto" data-reveal>
+        <div class="relative min-w-[720px] py-6">
+          <span class="flow-line absolute left-[8%] right-[8%] top-1/2 h-px bg-[var(--line)]"></span>
+          <span class="flow-pulse absolute top-1/2 w-24 h-px"></span>
+          <div class="relative grid grid-cols-5">
+            <div class="flow-node group flex flex-col items-center text-center px-2">
+              <span class="fdot w-14 h-14 rounded-2xl border border-[var(--line)] bg-[var(--ink)] grid place-items-center mb-3 transition-all duration-300 group-hover:border-[var(--accent)]"><i data-lucide="key-round" class="w-5 h-5 text-[var(--accent)]"></i></span>
+              <span class="text-[10px] font-mono text-[var(--muted)] mb-1">01</span>
+              <p class="font-sans font-semibold text-sm">Source</p>
+              <p class="text-[11px] text-[var(--muted)] font-sans">Xtream / M3U</p>
+            </div>
+            <div class="flow-node group flex flex-col items-center text-center px-2">
+              <span class="fdot w-14 h-14 rounded-2xl border border-[var(--line)] bg-[var(--ink)] grid place-items-center mb-3 transition-all duration-300 group-hover:border-[var(--accent)]"><i data-lucide="filter" class="w-5 h-5 text-[var(--accent)]"></i></span>
+              <span class="text-[10px] font-mono text-[var(--muted)] mb-1">02</span>
+              <p class="font-sans font-semibold text-sm">Parse &amp; cache</p>
+              <p class="text-[11px] text-[var(--muted)] font-sans">Clean · warm TTL</p>
+            </div>
+            <div class="flow-node group flex flex-col items-center text-center px-2">
+              <span class="fdot w-14 h-14 rounded-2xl border border-[var(--line)] bg-[var(--ink)] grid place-items-center mb-3 transition-all duration-300 group-hover:border-[var(--accent)]"><i data-lucide="clapperboard" class="w-5 h-5 text-[var(--accent)]"></i></span>
+              <span class="text-[10px] font-mono text-[var(--muted)] mb-1">03</span>
+              <p class="font-sans font-semibold text-sm">Resolve</p>
+              <p class="text-[11px] text-[var(--muted)] font-sans">IMDB / TMDB</p>
+            </div>
+            <div class="flow-node group flex flex-col items-center text-center px-2">
+              <span class="fdot w-14 h-14 rounded-2xl border border-[var(--line)] bg-[var(--ink)] grid place-items-center mb-3 transition-all duration-300 group-hover:border-[var(--accent)]"><i data-lucide="git-compare" class="w-5 h-5 text-[var(--accent)]"></i></span>
+              <span class="text-[10px] font-mono text-[var(--muted)] mb-1">04</span>
+              <p class="font-sans font-semibold text-sm">Match</p>
+              <p class="text-[11px] text-[var(--muted)] font-sans">Strict scoring</p>
+            </div>
+            <div class="flow-node group flex flex-col items-center text-center px-2">
+              <span class="fdot fdot-end w-14 h-14 rounded-2xl border border-[var(--accent)] bg-[rgba(255,94,43,0.1)] grid place-items-center mb-3 transition-all duration-300"><i data-lucide="play" class="w-5 h-5 text-[var(--accent)]"></i></span>
+              <span class="text-[10px] font-mono text-[var(--accent)] mb-1">05</span>
+              <p class="font-sans font-semibold text-sm">Play</p>
+              <p class="text-[11px] text-[var(--muted)] font-sans">Stremio / Nuvio</p>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div class="border border-[var(--line)] rounded-2xl p-6" data-reveal><h4 class="font-sans font-semibold mb-2 flex items-center gap-2"><i data-lucide="server-cog" class="w-4 h-4 text-[var(--accent)]"></i> Runtime</h4><p class="text-sm text-[var(--paper)]/60 font-sans">Node + TypeScript on Express, deployed as a single Vercel serverless function.</p></div>
-        <div class="border border-[var(--line)] rounded-2xl p-6" data-reveal><h4 class="font-sans font-semibold mb-2 flex items-center gap-2"><i data-lucide="database-zap" class="w-4 h-4 text-[var(--accent)]"></i> State</h4><p class="text-sm text-[var(--paper)]/60 font-sans">No database. Config is LZ-compressed into the manifest URL; hot data lives in a warm-instance TTL cache.</p></div>
-        <div class="border border-[var(--line)] rounded-2xl p-6" data-reveal><h4 class="font-sans font-semibold mb-2 flex items-center gap-2"><i data-lucide="scan-search" class="w-4 h-4 text-[var(--accent)]"></i> Matching</h4><p class="text-sm text-[var(--paper)]/60 font-sans">Title cleaner strips tags & quality; string-similarity ranks candidates with year/episode guards.</p></div>
-        <div class="border border-[var(--line)] rounded-2xl p-6" data-reveal><h4 class="font-sans font-semibold mb-2 flex items-center gap-2"><i data-lucide="shield-check" class="w-4 h-4 text-[var(--accent)]"></i> Privacy</h4><p class="text-sm text-[var(--paper)]/60 font-sans">Your credentials never touch a server datastore — they ride inside the encoded manifest link only.</p></div>
-        <div class="border border-[var(--line)] rounded-2xl p-6" data-reveal><h4 class="font-sans font-semibold mb-2 flex items-center gap-2"><i data-lucide="repeat" class="w-4 h-4 text-[var(--accent)]"></i> Efficiency</h4><p class="text-sm text-[var(--paper)]/60 font-sans">In-flight de-duplication collapses concurrent identical fetches into one upstream request.</p></div>
-        <div class="border border-[var(--line)] rounded-2xl p-6" data-reveal><h4 class="font-sans font-semibold mb-2 flex items-center gap-2"><i data-lucide="plug" class="w-4 h-4 text-[var(--accent)]"></i> Protocol</h4><p class="text-sm text-[var(--paper)]/60 font-sans">Implements the Stremio v3 addon protocol — manifest, catalog, meta and stream resources.</p></div>
+      <!-- Bento grid of capabilities -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <!-- Feature hero -->
+        <div class="bento group relative col-span-2 lg:row-span-2 rounded-3xl border border-[var(--line)] p-7 overflow-hidden flex flex-col justify-between min-h-[220px]" data-reveal data-cursor>
+          <div class="flex items-start justify-between">
+            <span class="display text-6xl text-[var(--paper)]/12 group-hover:text-[var(--accent)] transition-colors duration-500">01</span>
+            <i data-lucide="server-cog" class="w-6 h-6 text-[var(--accent)]"></i>
+          </div>
+          <div>
+            <h3 class="display text-3xl mb-2">Serverless by nature</h3>
+            <p class="text-sm text-[var(--paper)]/60 font-sans leading-relaxed max-w-md">Node + TypeScript compiled to a single Vercel function. No always-on server, no database, no ops — it scales to zero and costs nothing at rest.</p>
+          </div>
+        </div>
+
+        <div class="bento group relative rounded-3xl border border-[var(--line)] p-6 overflow-hidden" data-reveal data-cursor>
+          <i data-lucide="database-zap" class="w-5 h-5 text-[var(--accent)] mb-4"></i>
+          <h4 class="font-sans font-semibold text-sm mb-1">Fully stateless</h4>
+          <p class="text-xs text-[var(--paper)]/55 font-sans leading-relaxed">Config rides inside the manifest URL. Nothing stored.</p>
+        </div>
+
+        <div class="bento group relative rounded-3xl border border-[var(--line)] p-6 overflow-hidden" data-reveal data-cursor>
+          <i data-lucide="scan-search" class="w-5 h-5 text-[var(--accent)] mb-4"></i>
+          <h4 class="font-sans font-semibold text-sm mb-1">Precise matching</h4>
+          <p class="text-xs text-[var(--paper)]/55 font-sans leading-relaxed">Strict scoring returns only the exact title.</p>
+        </div>
+
+        <div class="bento group relative rounded-3xl border border-[var(--line)] p-6 overflow-hidden" data-reveal data-cursor>
+          <i data-lucide="shield-check" class="w-5 h-5 text-[var(--accent)] mb-4"></i>
+          <h4 class="font-sans font-semibold text-sm mb-1">Private by design</h4>
+          <p class="text-xs text-[var(--paper)]/55 font-sans leading-relaxed">Credentials never touch a datastore.</p>
+        </div>
+
+        <div class="bento group relative rounded-3xl border border-[var(--line)] p-6 overflow-hidden" data-reveal data-cursor>
+          <i data-lucide="plug" class="w-5 h-5 text-[var(--accent)] mb-4"></i>
+          <h4 class="font-sans font-semibold text-sm mb-1">Protocol-native</h4>
+          <p class="text-xs text-[var(--paper)]/55 font-sans leading-relaxed">Stremio v3: catalog, meta &amp; stream.</p>
+        </div>
+
+        <!-- Tech tag strip -->
+        <div class="bento-tags col-span-2 lg:col-span-4 rounded-3xl border border-[var(--line)] p-5 flex flex-wrap items-center gap-2.5" data-reveal>
+          <span class="text-[11px] font-mono uppercase tracking-[0.15em] text-[var(--muted)] mr-2">Built with</span>
+          <span class="text-[11px] font-mono px-3 py-1.5 rounded-full border border-[var(--line)] text-[var(--paper)]/70">TypeScript</span>
+          <span class="text-[11px] font-mono px-3 py-1.5 rounded-full border border-[var(--line)] text-[var(--paper)]/70">Node · Express</span>
+          <span class="text-[11px] font-mono px-3 py-1.5 rounded-full border border-[var(--line)] text-[var(--paper)]/70">Vercel</span>
+          <span class="text-[11px] font-mono px-3 py-1.5 rounded-full border border-[var(--line)] text-[var(--paper)]/70">TMDB API</span>
+          <span class="text-[11px] font-mono px-3 py-1.5 rounded-full border border-[var(--line)] text-[var(--paper)]/70">Xtream Codes</span>
+          <span class="text-[11px] font-mono px-3 py-1.5 rounded-full border border-[var(--line)] text-[var(--paper)]/70">M3U / M3U8</span>
+          <span class="text-[11px] font-mono px-3 py-1.5 rounded-full border border-[var(--line)] text-[var(--paper)]/70">LZ-String</span>
+        </div>
       </div>
     </div>
   </section>
@@ -201,7 +365,7 @@
             <li><a href="#how" class="ul" data-cursor>Method</a></li>
             <li><a href="#features" class="ul" data-cursor>Features</a></li>
             <li><a href="#stack" class="ul" data-cursor>Architecture</a></li>
-            <li><a href="/configure" class="ul" data-cursor>Build your addon</a></li>
+            <li><a href="/configure" class="ul" data-cursor>Configure your addon</a></li>
           </ul>
         </div>
         <div>
@@ -214,11 +378,11 @@
           </ul>
         </div>
         <div>
-          <p class="text-xs uppercase tracking-[0.2em] text-[var(--muted)] font-sans mb-4">Get started</p>
-          <a href="/configure" class="ember inline-flex items-center gap-2 px-5 py-3 rounded-full font-sans font-semibold text-sm" data-magnetic data-cursor-big>
-            Build now <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+          <p class="text-xs uppercase tracking-[0.2em] text-[var(--muted)] font-sans mb-3">Ready when you are</p>
+          <a href="/configure" class="ember inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full font-sans font-semibold text-sm leading-none w-full sm:w-auto" data-magnetic data-cursor-big>
+            <span>Configure now</span> <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
           </a>
-          <p class="text-xs text-[var(--muted)] font-sans mt-4">Free · Serverless · Vercel-ready</p>
+          <p class="text-xs text-[var(--muted)] font-sans mt-3 flex items-center gap-1.5"><i data-lucide="check" class="w-3.5 h-3.5 text-[var(--accent)]"></i> Free · Serverless · Vercel-ready</p>
         </div>
       </div>
 
@@ -242,7 +406,7 @@
     document.addEventListener('DOMContentLoaded', ()=>{
       lucide.createIcons();
       var y=document.getElementById('year'); if(y) y.textContent=new Date().getFullYear();
-      if(!window.gsap) return;
+      if(!window.gsap){ document.querySelectorAll('.method-card').forEach(c=>c.classList.add('in')); return; }
       gsap.registerPlugin(ScrollTrigger);
       const tl=gsap.timeline({defaults:{ease:'power4.out'}});
       gsap.set('[data-hero-line]',{yPercent:110});
@@ -253,57 +417,17 @@
         .from('[data-hero-scroll]',{opacity:0,duration:0.8},0.9);
       gsap.utils.toArray('[data-reveal]').forEach(el=>{gsap.from(el,{opacity:0,y:40,duration:0.9,ease:'power3.out',scrollTrigger:{trigger:el,start:'top 85%'}});});
       gsap.to('h1.display',{yPercent:18,ease:'none',scrollTrigger:{trigger:'header',start:'top top',end:'bottom top',scrub:true}});
-      gsap.to('[data-hero-3d]',{yPercent:24,ease:'none',scrollTrigger:{trigger:'header',start:'top top',end:'bottom top',scrub:true}});
-      gsap.from('[data-hero-3d]',{opacity:0,duration:1.4,ease:'power2.out'});
       gsap.to('[data-hero-scroll]',{opacity:0,ease:'none',scrollTrigger:{trigger:'header',start:'top top',end:'40% top',scrub:true}});
-    });
 
-    /* 3D hero object — an ember-lit icosahedron (Three.js) */
-    (function(){
-      const canvas=document.getElementById('hero3d');
-      if(!canvas || !window.THREE) return;
-      const THREE=window.THREE;
-      const renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true});
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
-      const scene=new THREE.Scene();
-      const camera=new THREE.PerspectiveCamera(45,1,0.1,100);
-      camera.position.z=4.2;
-
-      const geo=new THREE.IcosahedronGeometry(1.35,1);
-      const solid=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({
-        color:0x140b08, metalness:0.6, roughness:0.35, flatShading:true
-      }));
-      const wire=new THREE.LineSegments(
-        new THREE.WireframeGeometry(geo),
-        new THREE.LineBasicMaterial({color:0xff5e2b, transparent:true, opacity:0.85})
-      );
-      const group=new THREE.Group();
-      group.add(solid); group.add(wire);
-      scene.add(group);
-
-      const key=new THREE.PointLight(0xff5e2b,2.2,20); key.position.set(3,2,4); scene.add(key);
-      const fill=new THREE.PointLight(0xffffff,0.6,20); fill.position.set(-4,-2,2); scene.add(fill);
-      scene.add(new THREE.AmbientLight(0x404040,0.8));
-
-      function size(){
-        const r=canvas.getBoundingClientRect();
-        renderer.setSize(r.width,r.height,false);
-        camera.aspect=r.width/r.height; camera.updateProjectionMatrix();
+      // Method cards: glitch-free staggered reveal via a class toggle
+      const methodCards=gsap.utils.toArray('.method-card');
+      if(methodCards.length){
+        ScrollTrigger.create({
+          trigger:'#method-grid', start:'top 78%', once:true,
+          onEnter:()=>methodCards.forEach((c,i)=>setTimeout(()=>c.classList.add('in'), i*120))
+        });
       }
-      size(); window.addEventListener('resize',size);
-
-      let tx=0,ty=0;
-      window.addEventListener('mousemove',e=>{ tx=(e.clientX/window.innerWidth-0.5); ty=(e.clientY/window.innerHeight-0.5); });
-
-      (function loop(){
-        group.rotation.y+=0.0035; group.rotation.x+=0.0016;
-        camera.position.x+=((tx*0.6)-camera.position.x)*0.05;
-        camera.position.y+=((-ty*0.6)-camera.position.y)*0.05;
-        camera.lookAt(0,0,0);
-        renderer.render(scene,camera);
-        requestAnimationFrame(loop);
-      })();
-    })();
+    });
   </script>
 </body>
 </html>

@@ -1,25 +1,20 @@
-<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="IPTV Bridge">
-  <defs>
-    <linearGradient id="ember" x1="128" y1="96" x2="392" y2="416" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#ff7a45"/>
-      <stop offset="1" stop-color="#ff4d18"/>
-    </linearGradient>
-    <clipPath id="squircle"><rect width="512" height="512" rx="128"/></clipPath>
-  </defs>
-
-  <!-- Badge -->
-  <g clip-path="url(#squircle)">
-    <rect width="512" height="512" fill="#0b0b0d"/>
-    <rect x="6" y="6" width="500" height="500" rx="122" fill="none" stroke="#ffffff" stroke-opacity="0.06" stroke-width="12"/>
-
-    <!-- Broadcast arcs converging on the play mark -->
-    <g stroke="#f4f0e8" fill="none" stroke-linecap="round">
-      <path d="M150 176 A150 150 0 0 1 362 176" stroke-opacity="0.16" stroke-width="16"/>
-      <path d="M186 206 A104 104 0 0 1 326 206" stroke-opacity="0.30" stroke-width="16"/>
-    </g>
-    <path d="M222 236 A48 48 0 0 1 290 236" stroke="url(#ember)" stroke-width="16" fill="none" stroke-linecap="round"/>
-
-    <!-- Play triangle (the stream) -->
-    <path d="M214 288 L214 396 Q214 414 230 405 L322 353 Q338 344 322 335 L230 283 Q214 274 214 288 Z" fill="url(#ember)"/>
-  </g>
+<svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+	<defs>
+		<linearGradient id="g1" x2="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(0,504,-504,0,4,4)">
+			<stop offset="0" stop-color="#151515"/>
+			<stop offset="1" stop-color="#0a0a0a"/>
+		</linearGradient>
+		<linearGradient id="g2" x2="1" gradientUnits="userSpaceOnUse" gradientTransform="matrix(113.347,128.827,-132.646,116.707,212,183.586)">
+			<stop offset="0" stop-color="#ff8a50"/>
+			<stop offset="1" stop-color="#ff5722"/>
+		</linearGradient>
+	</defs>
+	<style>
+		.s0 { fill: url(#g1) } 
+		.s1 { fill: none;stroke: #57575d;stroke-linecap: round;stroke-width: 26 } 
+		.s2 { fill: url(#g2) } 
+	</style>
+	<path fill-rule="evenodd" class="s0" d="m124 4h264c66.27 0 120 53.73 120 120v264c0 66.27-53.73 120-120 120h-264c-66.27 0-120-53.73-120-120v-264c0-66.27 53.73-120 120-120z"/>
+	<path class="s1" d="m140 316q0-180 116-180 116 0 116 180"/>
+	<path class="s2" d="m212 192.5c0-7 7.2-11.1 13-7.7l96 55.7c5.8 3.4 5.8 11.6 0 15l-96 55.7c-5.8 3.4-13-0.7-13-7.7z"/>
 </svg>

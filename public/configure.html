@@ -80,12 +80,14 @@
             <div id="m3u-fields" class="space-y-4 hidden">
               <div><label class="block text-xs text-[var(--paper)]/70 mb-2">Playlist URL</label><input type="url" id="m3u-url" placeholder="https://provider.com/get.php?...type=m3u_plus" class="w-full field rounded-xl px-4 py-3.5 text-sm" /></div>
             </div>
-            <button type="button" onclick="testConnection()" id="btn-test" class="ember w-full py-4 rounded-full font-semibold text-sm flex items-center justify-center gap-2" data-magnetic data-cursor-big>
-              <i data-lucide="zap" class="w-4 h-4"></i> Test connection & load content
-            </button>
             <div id="status-box" class="hidden rounded-2xl border p-4 text-sm items-start gap-3"></div>
-            <div class="flex justify-end">
-              <button type="button" onclick="goStep(2)" id="next-1" class="opacity-30 pointer-events-none ghost px-6 py-3 rounded-full font-semibold text-sm flex items-center gap-2 transition-opacity">Continue <i data-lucide="arrow-right" class="w-4 h-4"></i></button>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button type="button" onclick="testConnection()" id="btn-test" class="ghost py-4 rounded-full font-semibold text-sm flex items-center justify-center gap-2" data-cursor>
+                <i data-lucide="zap" class="w-4 h-4 text-[var(--accent)]"></i> <span>Test connection</span>
+              </button>
+              <button type="button" onclick="connectAndContinue()" id="btn-connect" class="ember py-4 rounded-full font-semibold text-sm flex items-center justify-center gap-2" data-magnetic data-cursor-big>
+                <span>Connect</span> <i data-lucide="arrow-right" class="w-4 h-4"></i>
+              </button>
             </div>
           </div>
 
@@ -158,7 +160,8 @@
 
   <script src="/theme.js"></script>
   <script>
-    let providerType='xtream', categories=[];
+    let providerType='xtream', categories=[], tested=false;
+
     function goStep(n){
       [1,2,3].forEach(i=>document.getElementById('step-'+i).classList.toggle('hidden', i!==n));
       for(let i=1;i<=3;i++){const node=document.getElementById('node-'+i);node.classList.remove('on','done');if(i<n)node.classList.add('done');if(i===n)node.classList.add('on');}
@@ -168,6 +171,7 @@
       if(window.gsap)gsap.fromTo('#step-'+n,{opacity:0,y:16},{opacity:1,y:0,duration:.5,ease:'power3.out'});
       window.scrollTo({top:0,behavior:'smooth'});
     }
+
     function setProviderType(type){
       providerType=type; const xt=type==='xtream';
       document.getElementById('card-xtream').classList.toggle('on',xt);
@@ -178,29 +182,65 @@
       document.getElementById('m3u-fields').classList.toggle('hidden',xt);
       lucide.createIcons();
     }
+
     function toast(msg){const t=document.getElementById('toast');document.getElementById('toast-text').innerText=msg;t.style.transform='translate(-50%,0)';t.style.opacity='1';setTimeout(()=>{t.style.transform='translate(-50%,-160%)';t.style.opacity='0';},2200);}
-    async function testConnection(){
-      const btn=document.getElementById('btn-test'),box=document.getElementById('status-box');
+
+    function hasCredentials(){
+      if(providerType==='xtream') return !!(val('xtream-host') && val('xtream-user') && val('xtream-pass'));
+      return !!val('m3u-url');
+    }
+
+    // Test connection: validates + loads categories. Returns true on success.
+    async function testConnection(silent){
+      if(!hasCredentials()){
+        showStatus(false, 'Missing details', providerType==='xtream' ? 'Enter host, username and password.' : 'Enter your playlist URL.');
+        return false;
+      }
+      const btn=document.getElementById('btn-test');
+      const original=btn.innerHTML;
       btn.disabled=true;btn.innerHTML='<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Testing…';lucide.createIcons();
       const payload={type:providerType,host:val('xtream-host'),username:val('xtream-user'),password:val('xtream-pass'),m3uUrl:val('m3u-url'),tmdbApiKey:val('tmdb-key')};
       try{
         const res=await fetch('/api/test-connection',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-        const data=await res.json();box.classList.remove('hidden');box.classList.add('flex');
+        const data=await res.json();
         if(data.success){
-          box.className='rounded-2xl border border-[var(--accent)]/40 bg-[rgba(255,94,43,0.08)] text-[var(--accent)] p-4 text-sm flex items-start gap-3';
-          box.innerHTML='<i data-lucide="check-circle" class="w-5 h-5 mt-0.5 shrink-0"></i><div><p class="font-semibold mb-0.5">Connected</p><p class="text-xs opacity-80 text-[var(--paper)]/70">'+esc(data.message)+'</p></div>';
+          tested=true;
           categories=data.categories||[];renderCats();
-          document.getElementById('next-1').classList.remove('opacity-30','pointer-events-none');
-        }else{
-          box.className='rounded-2xl border border-rose-500/40 bg-rose-500/10 text-rose-300 p-4 text-sm flex items-start gap-3';
-          box.innerHTML='<i data-lucide="alert-triangle" class="w-5 h-5 mt-0.5 shrink-0"></i><div><p class="font-semibold mb-0.5">Connection failed</p><p class="text-xs opacity-80">'+esc(data.error||'Check your details.')+'</p></div>';
+          showStatus(true, 'Connected', data.message);
+          return true;
         }
+        showStatus(false, 'Connection failed', data.error||'Check your details.');
+        return false;
       }catch(e){
-        box.classList.remove('hidden');
-        box.className='rounded-2xl border border-rose-500/40 bg-rose-500/10 text-rose-300 p-4 text-sm flex items-start gap-3';
-        box.innerHTML='<i data-lucide="wifi-off" class="w-5 h-5 mt-0.5 shrink-0"></i><div><p class="font-semibold mb-0.5">Network error</p><p class="text-xs opacity-80">'+esc(e.message)+'</p></div>';
-      }finally{btn.disabled=false;btn.innerHTML='<i data-lucide="zap" class="w-4 h-4"></i> Test connection & load content';lucide.createIcons();}
+        showStatus(false, 'Network error', e.message, 'wifi-off');
+        return false;
+      }finally{btn.disabled=false;btn.innerHTML=original;lucide.createIcons();}
     }
+
+    // Connect: test (if not already), then advance to step 2.
+    async function connectAndContinue(){
+      const btn=document.getElementById('btn-connect');
+      const original=btn.innerHTML;
+      btn.disabled=true;btn.innerHTML='<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Connecting…';lucide.createIcons();
+      let ok=tested;
+      if(!ok) ok=await testConnection(true);
+      btn.disabled=false;btn.innerHTML=original;lucide.createIcons();
+      if(ok) goStep(2);
+    }
+
+    function showStatus(success, title, msg, icon){
+      const box=document.getElementById('status-box');
+      box.classList.remove('hidden');box.classList.add('flex');
+      if(success){
+        box.className='rounded-2xl border border-[var(--accent)]/40 bg-[rgba(255,94,43,0.08)] text-[var(--accent)] p-4 text-sm flex items-start gap-3';
+        box.innerHTML='<i data-lucide="check-circle" class="w-5 h-5 mt-0.5 shrink-0"></i><div><p class="font-semibold mb-0.5">'+esc(title)+'</p><p class="text-xs opacity-80 text-[var(--paper)]/70">'+esc(msg)+'</p></div>';
+      }else{
+        box.className='rounded-2xl border border-rose-500/40 bg-rose-500/10 text-rose-300 p-4 text-sm flex items-start gap-3';
+        box.innerHTML='<i data-lucide="'+(icon||'alert-triangle')+'" class="w-5 h-5 mt-0.5 shrink-0"></i><div><p class="font-semibold mb-0.5">'+esc(title)+'</p><p class="text-xs opacity-80">'+esc(msg)+'</p></div>';
+      }
+      lucide.createIcons();
+    }
+
     function renderCats(){
       const c=document.getElementById('cat-container');
       if(!categories.length){c.innerHTML='<p class="text-xs text-[var(--muted)] p-2">No categories found.</p>';return;}
@@ -211,12 +251,35 @@
     function toggleAllCats(on){document.querySelectorAll('.cat-cb').forEach(cb=>{cb.checked=on;syncPill(cb);});}
     function filterCatPills(){const q=val('cat-search').toLowerCase();document.querySelectorAll('#cat-container .pill').forEach(p=>{p.style.display=p.getAttribute('data-name').includes(q)?'':'none';});}
     function updateCatCount(){const total=document.querySelectorAll('.cat-cb').length,on=document.querySelectorAll('.cat-cb:checked').length;document.getElementById('cat-count').innerText=total?'· '+on+'/'+total+' selected':'';}
+
     function buildConfig(){const cats=Array.from(document.querySelectorAll('.cat-cb:checked')).map(cb=>cb.value);return{type:providerType,host:val('xtream-host'),username:val('xtream-user'),password:val('xtream-pass'),m3uUrl:val('m3u-url'),tmdbApiKey:val('tmdb-key'),includeLive:document.getElementById('inc-live').checked,includeMovies:document.getElementById('inc-movies').checked,includeSeries:document.getElementById('inc-series').checked,includedCategories:cats};}
     function generateLink(){const compressed=LZString.compressToEncodedURIComponent(JSON.stringify(buildConfig()));const https=window.location.origin+'/'+compressed+'/manifest.json';document.getElementById('manifest-url').value=https;document.getElementById('stremio-btn').href=https.replace(/^https?:\/\//,'stremio://');}
     function copyManifest(){const i=document.getElementById('manifest-url');navigator.clipboard.writeText(i.value).then(()=>toast('Manifest URL copied'));}
     function val(id){const el=document.getElementById(id);return el?el.value:'';}
     function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
-    document.addEventListener('DOMContentLoaded',()=>lucide.createIcons());
+
+    // Re-configure support: if the URL is /<config>/configure, prefill the form
+    function hydrateFromUrl(){
+      const m=window.location.pathname.match(/^\/([^/]+)\/configure\/?$/);
+      if(!m) return;
+      try{
+        const json=LZString.decompressFromEncodedURIComponent(m[1]);
+        if(!json) return;
+        const cfg=JSON.parse(json);
+        if(cfg.type) setProviderType(cfg.type);
+        if(cfg.host) document.getElementById('xtream-host').value=cfg.host;
+        if(cfg.username) document.getElementById('xtream-user').value=cfg.username;
+        if(cfg.password) document.getElementById('xtream-pass').value=cfg.password;
+        if(cfg.m3uUrl) document.getElementById('m3u-url').value=cfg.m3uUrl;
+        if(cfg.tmdbApiKey) document.getElementById('tmdb-key').value=cfg.tmdbApiKey;
+        if(cfg.includeLive===false) document.getElementById('inc-live').checked=false;
+        if(cfg.includeMovies===false) document.getElementById('inc-movies').checked=false;
+        if(cfg.includeSeries===false) document.getElementById('inc-series').checked=false;
+        showStatus(true,'Existing configuration loaded','Re-test to refresh categories, or adjust and re-generate.');
+      }catch(e){/* ignore */}
+    }
+
+    document.addEventListener('DOMContentLoaded',()=>{ lucide.createIcons(); hydrateFromUrl(); });
   </script>
 </body>
 </html>

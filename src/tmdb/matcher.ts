@@ -34,33 +34,49 @@ export function matchScore(targetTitle: string, streamTitle: string, targetYear?
   const s = normalizeForMatch(streamTitle);
   if (!t || !s) return 0;
 
-  if (t === s) return 1.0;
-
-  let score = stringSimilarity.compareTwoStrings(t, s);
-
-  // Containment bonus (stream titles often carry extra words: "Movie 2021 MULTI")
-  if (s.includes(t) || t.includes(s)) {
-    const shorter = Math.min(t.length, s.length);
-    const longer = Math.max(t.length, s.length);
-    // reward strong containment, but not tiny fragments
-    score = Math.max(score, 0.7 + 0.25 * (shorter / longer));
+  // Exact normalized match is the gold standard
+  if (t === s) {
+    // If we know the year and the stream also has a (different) year, be strict
+    const sy = cleanTitle(streamTitle).year;
+    if (targetYear && sy && Math.abs(targetYear - sy) > 1) return 0.6;
+    return 1.0;
   }
 
-  // Token overlap (helps word-order differences)
-  const tTokens = new Set(t.split(' '));
-  const sTokens = new Set(s.split(' '));
-  const overlap = [...tTokens].filter((w) => sTokens.has(w)).length;
-  const tokenScore = overlap / Math.max(tTokens.size, 1);
-  score = Math.max(score, tokenScore * 0.9);
+  const base = stringSimilarity.compareTwoStrings(t, s);
 
-  // Year handling
-  const streamYear = cleanTitle(streamTitle).year;
-  if (targetYear && streamYear) {
-    if (Math.abs(targetYear - streamYear) <= 1) score = Math.min(1, score + 0.08);
-    else if (Math.abs(targetYear - streamYear) > 2) score *= 0.7;
+  const tTokens = t.split(' ').filter(Boolean);
+  const sTokens = s.split(' ').filter(Boolean);
+  const tSet = new Set(tTokens);
+  const sSet = new Set(sTokens);
+
+  // Every target word must be present in the stream title, otherwise it's a
+  // different movie (e.g. "Batman" must not match "Batman Begins").
+  const missing = tTokens.filter((w) => !sSet.has(w)).length;
+  const extra = sTokens.filter((w) => !tSet.has(w)).length;
+
+  // Hard reject when target words are missing from the stream
+  if (missing > 0) {
+    // allow a single tiny stopword miss only if base similarity is very high
+    if (missing === 1 && base >= 0.9) {
+      // continue with penalty
+    } else {
+      return Math.min(base, 0.45);
+    }
   }
 
-  return score;
+  // All target tokens present. Penalize each extra word in the stream title so
+  // "The Batman" strongly beats "The Batman Returns Special Edition".
+  let score = 0.9 - extra * 0.12;
+  score = Math.max(score, base);
+
+  // Year alignment strongly rewards/penalizes
+  const sy = cleanTitle(streamTitle).year;
+  if (targetYear && sy) {
+    if (Math.abs(targetYear - sy) <= 1) score += 0.08;
+    else score -= 0.35; // wrong year → almost certainly a different title
+  }
+
+  return Math.max(0, Math.min(1, score));
 }
 
 export interface MatchOptions {
@@ -81,7 +97,7 @@ export function rankMatches(
   streams: IPTVItem[],
   opts: MatchOptions = {}
 ): Array<{ item: IPTVItem; score: number }> {
-  const { targetYear, targetSeason, targetEpisode, altTitles = [], minScore = 0.5 } = opts;
+  const { targetYear, targetSeason, targetEpisode, altTitles = [], minScore = 0.82 } = opts;
   const titles = [targetTitle, ...altTitles].filter(Boolean);
 
   const matches: Array<{ item: IPTVItem; score: number }> = [];
@@ -106,7 +122,23 @@ export function rankMatches(
   }
 
   matches.sort((a, b) => b.score - a.score);
-  return matches;
+
+  // De-duplicate by normalized title + resolved URL so we don't list the same
+  // source many times, and drop anything far below the top match.
+  const seen = new Set<string>();
+  const deduped: Array<{ item: IPTVItem; score: number }> = [];
+  const topScore = matches.length ? matches[0].score : 0;
+
+  for (const m of matches) {
+    if (m.score < topScore - 0.15) break; // keep only near-best matches
+    const key = `${normalizeForMatch(m.item.title)}|${m.item.url || m.item.streamId || ''}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(m);
+    if (deduped.length >= 8) break;
+  }
+
+  return deduped;
 }
 
 export function itemsToStreams(matches: Array<{ item: IPTVItem; score: number }>): StremioStream[] {
