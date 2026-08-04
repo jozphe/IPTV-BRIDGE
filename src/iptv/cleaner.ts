@@ -9,6 +9,22 @@ export interface CleanedTitle {
   country?: string;
 }
 
+/** Normalize only title identity, retaining words that can distinguish a
+ * sequel/subtitle while removing provider release metadata. */
+export function titleIdentity(rawTitle: string): string {
+  const parsed = cleanTitle(rawTitle);
+  return parsed.cleanTitle
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/&/g, ' and ')
+    .replace(/['’`]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^(the|a|an|le|la|les|el|los|las|il|lo|un|una|der|die|das)\s+/, '');
+}
+
 export function cleanTitle(rawTitle: string): CleanedTitle {
   if (!rawTitle) {
     return { original: '', cleanTitle: '' };
@@ -48,9 +64,13 @@ export function cleanTitle(rawTitle: string): CleanedTitle {
   cleaned = cleaned.replace(/^[A-Z]{2,4}\s*[:\|\-]\s*/i, '');
   cleaned = cleaned.replace(/^\[[A-Z]{2,4}\]\s*/i, '');
 
-  // Remove quality tags
-  cleaned = cleaned.replace(/\[\s*(4K|UHD|1080p|720p|FHD|HD|HEVC|H\.265|x265|RAW|SD)\s*\]/gi, '');
-  cleaned = cleaned.replace(/\b(4K|UHD|1080p|720p|FHD|HD|HEVC|H\.265|x265|RAW|SD)\b/gi, '');
+  // Remove release metadata while preserving real title/subtitle words.
+  const releaseTag = '(?:4K|UHD|2160p|1080p|720p|480p|FHD|HD|SD|HEVC|H\\.?265|H\\.?264|x265|x264|RAW|WEB[ .-]?DL|WEBRip|BluRay|BRRip|DVDRip|HDR10?|Dolby|Atmos|AAC|AC3|DTS|MULTI|MULTiSUB|Dual[ .-]?Audio)';
+  cleaned = cleaned.replace(new RegExp(`\\[\\s*${releaseTag}\\s*\\]`, 'gi'), '');
+  cleaned = cleaned.replace(new RegExp(`\\b${releaseTag}\\b`, 'gi'), '');
+
+  // Standalone language/provider tags are metadata, not title identity.
+  cleaned = cleaned.replace(/\b(?:EN|ENG|English|FR|FRE|French|ES|SPA|Spanish|DE|GER|German|IT|ITA|Italian|PT|POR|Portuguese|HI|HIN|Hindi|AR|ARA|Arabic|TR|TUR|Turkish)\b/gi, '');
 
   // Remove S01E02 patterns
   cleaned = cleaned.replace(/(?:S|Season\s*)(\d{1,2})\s*(?:E|Ep|Episode\s*|x|\-)\s*(\d{1,3})/gi, '');

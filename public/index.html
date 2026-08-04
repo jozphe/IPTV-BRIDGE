@@ -234,7 +234,15 @@
           <p class="text-xs font-sans tracking-[0.25em] uppercase text-[var(--muted)] mb-3" data-reveal>Architecture</p>
           <h2 class="display text-5xl sm:text-7xl" data-reveal>Under the hood</h2>
         </div>
-        <a href="https://github.com/jozphe/IPTV-BRIDGE" target="_blank" class="ghost px-5 py-2.5 rounded-full font-sans text-sm inline-flex items-center gap-2 leading-none shrink-0" data-cursor data-reveal><i data-lucide="github" class="w-4 h-4"></i> <span>Source</span></a>
+        <a href="https://github.com/jozphe/IPTV-BRIDGE" target="_blank" rel="noreferrer" class="source-link" data-cursor data-reveal>
+          <span class="source-link-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2C6.477 2 2 6.588 2 12.253c0 4.532 2.865 8.376 6.839 9.733.5.095.682-.222.682-.493 0-.244-.009-.889-.014-1.744-2.782.619-3.369-1.374-3.369-1.374-.455-1.184-1.11-1.499-1.11-1.499-.908-.637.069-.624.069-.624 1.003.073 1.531 1.056 1.531 1.056.892 1.567 2.341 1.114 2.91.852.091-.663.349-1.114.635-1.37-2.221-.259-4.556-1.139-4.556-5.067 0-1.119.39-2.034 1.029-2.751-.103-.259-.446-1.302.098-2.712 0 0 .84-.276 2.75 1.051A9.37 9.37 0 0 1 12 6.991a9.36 9.36 0 0 1 2.504.346c1.909-1.327 2.748-1.051 2.748-1.051.546 1.41.202 2.453.1 2.712.64.717 1.028 1.632 1.028 2.751 0 3.938-2.339 4.805-4.567 5.058.359.317.679.944.679 1.903 0 1.373-.012 2.481-.012 2.819 0 .274.18.593.688.492C19.138 20.626 22 16.784 22 12.253 22 6.588 17.523 2 12 2Z"/>
+            </svg>
+          </span>
+          <span class="source-link-label">View source</span>
+          <i data-lucide="arrow-up-right" class="source-link-arrow"></i>
+        </a>
       </div>
 
       <!-- Horizontal signal flow with a travelling ember pulse -->
@@ -278,9 +286,9 @@
       </div>
 
       <!-- Bento grid of capabilities -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <!-- Feature hero -->
-        <div class="bento group relative col-span-2 lg:row-span-2 rounded-3xl border border-[var(--line)] p-7 overflow-hidden flex flex-col justify-between min-h-[220px]" data-reveal data-cursor>
+        <div class="bento group relative col-span-1 sm:col-span-2 lg:row-span-2 rounded-3xl border border-[var(--line)] p-7 overflow-hidden flex flex-col justify-between min-h-[220px]" data-reveal data-cursor>
           <div class="flex items-start justify-between">
             <span class="display text-6xl text-[var(--paper)]/12 group-hover:text-[var(--accent)] transition-colors duration-500">01</span>
             <i data-lucide="server-cog" class="w-6 h-6 text-[var(--accent)]"></i>
@@ -316,7 +324,7 @@
         </div>
 
         <!-- Tech tag strip -->
-        <div class="bento-tags col-span-2 lg:col-span-4 rounded-3xl border border-[var(--line)] p-5 flex flex-wrap items-center gap-2.5" data-reveal>
+        <div class="bento-tags col-span-1 sm:col-span-2 lg:col-span-4 rounded-3xl border border-[var(--line)] p-5 flex flex-wrap items-center gap-2.5" data-reveal>
           <span class="text-[11px] font-mono uppercase tracking-[0.15em] text-[var(--muted)] mr-2">Built with</span>
           <span class="text-[11px] font-mono px-3 py-1.5 rounded-full border border-[var(--line)] text-[var(--paper)]/70">TypeScript</span>
           <span class="text-[11px] font-mono px-3 py-1.5 rounded-full border border-[var(--line)] text-[var(--paper)]/70">Node · Express</span>

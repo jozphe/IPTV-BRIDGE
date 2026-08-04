@@ -127,6 +127,13 @@ body {
 .flow-node .fdot { transition: border-color .3s ease, transform .3s ease, box-shadow .3s ease; }
 .flow-node:hover .fdot { transform: translateY(-4px); box-shadow: 0 0 22px -6px rgba(255,94,43,0.5); }
 .fdot-end { box-shadow: 0 0 20px -4px rgba(255,94,43,0.45); }
+@media (max-width: 640px) {
+  #flow { margin-left: -0.25rem; margin-right: -0.25rem; }
+  #flow > .min-w-\[720px\] { min-width: 620px; }
+  #flow .fdot { width: 2.75rem; height: 2.75rem; }
+  #flow .flow-node p { max-width: 88px; margin-left: auto; margin-right: auto; }
+  #flow .flow-node p:last-child { line-height: 1.25; }
+}
 
 /* ---------- Under the hood: bento ---------- */
 .bento { transition: border-color .3s ease, transform .3s ease, background .3s ease; }
@@ -142,6 +149,63 @@ body {
 .hood-row { transition: background .25s ease, padding-left .25s ease; border-radius: 10px; }
 .hood-row:hover { background: rgba(255,94,43,0.04); padding-left: 8px; }
 
+.source-link {
+  display: inline-grid;
+  grid-template-columns: 2rem auto 1rem;
+  align-items: center;
+  column-gap: 0.625rem;
+  min-height: 2.75rem;
+  padding: 0.3125rem 0.75rem 0.3125rem 0.3125rem;
+  border: 1px solid var(--line);
+  border-radius: 0.875rem;
+  background: rgba(244, 240, 232, 0.025);
+  color: var(--paper);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  transition: border-color .25s ease, background .25s ease, transform .25s ease;
+}
+.source-link:hover {
+  border-color: rgba(255, 94, 43, 0.45);
+  background: rgba(255, 94, 43, 0.05);
+  transform: translateY(-1px);
+}
+.source-link-icon {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.625rem;
+  background: rgba(255, 94, 43, 0.1);
+  color: var(--accent);
+}
+.source-link-icon svg {
+  display: block;
+  width: 1rem !important;
+  height: 1rem !important;
+  stroke-width: 2;
+}
+.source-link-label {
+  display: block;
+  line-height: 1;
+}
+.source-link-arrow {
+  display: block;
+  width: 0.875rem !important;
+  height: 0.875rem !important;
+  color: var(--muted);
+}
+@media (max-width: 640px) {
+  .source-link {
+    min-height: 2.5rem;
+    grid-template-columns: 1.75rem auto 0.875rem;
+    padding: 0.25rem 0.625rem 0.25rem 0.25rem;
+  }
+  .source-link-icon { width: 1.75rem; height: 1.75rem; }
+}
+
 /* ---------- Glass navbar ---------- */
 #nav { border-bottom: 1px solid transparent; }
 #nav.scrolled {
@@ -152,4 +216,3 @@ body {
   padding-top: 0.65rem;
   padding-bottom: 0.65rem;
 }
-

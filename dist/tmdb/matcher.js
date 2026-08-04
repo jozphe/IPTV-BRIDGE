@@ -32,6 +32,18 @@ function normalizeForMatch(input) {
     s = s.replace(/^(the|a|an|le|la|les|el|los|las|il|lo|un|una|der|die|das)\s+/i, '');
     return s.replace(/\s+/g, ' ').trim();
 }
+function identityTokens(input) {
+    return (0, cleaner_1.titleIdentity)(input).split(' ').filter(Boolean);
+}
+/** True when the provider title has the same identity words as the target.
+ * Release metadata and quality variants are intentionally ignored. */
+function isExactIdentity(target, candidate) {
+    const targetTokens = identityTokens(target);
+    const candidateTokens = identityTokens(candidate);
+    if (!targetTokens.length || targetTokens.length !== candidateTokens.length)
+        return false;
+    return targetTokens.every((token, index) => token === candidateTokens[index]);
+}
 function matchScore(targetTitle, streamTitle, targetYear) {
     const t = normalizeForMatch(targetTitle);
     const s = normalizeForMatch(streamTitle);
@@ -99,14 +111,22 @@ function rankMatches(targetTitle, streams, opts = {}) {
         }
         let best = 0;
         for (const title of titles) {
+            // A provider title with extra identity words is a different title. This
+            // preserves FHD/4K/language variants because those are removed by
+            // titleIdentity, while rejecting sequels and subtitles.
+            if (isExactIdentity(title, stream.title)) {
+                best = Math.max(best, 1);
+                continue;
+            }
             const sc = matchScore(title, stream.title, targetYear);
             if (sc > best)
                 best = sc;
             if (best >= 0.99)
                 break;
         }
-        if (best >= minScore)
+        if (best >= minScore && titles.some((title) => isExactIdentity(title, stream.title))) {
             matches.push({ item: stream, score: best });
+        }
     }
     matches.sort((a, b) => b.score - a.score);
     // De-duplicate by normalized title + resolved URL so we don't list the same
@@ -117,7 +137,7 @@ function rankMatches(targetTitle, streams, opts = {}) {
     for (const m of matches) {
         if (m.score < topScore - 0.2)
             break; // keep only near-best matches
-        const key = `${normalizeForMatch(m.item.title)}|${m.item.url || m.item.streamId || ''}`;
+        const key = `${(0, cleaner_1.titleIdentity)(m.item.title)}|${m.item.url || m.item.streamId || ''}`;
         if (seen.has(key))
             continue;
         seen.add(key);
