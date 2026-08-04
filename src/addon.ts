@@ -332,7 +332,7 @@ async function resolveGlobalStreams(
   let titles: string[] = [];
   let year: number | undefined;
 
-  if (baseId.startsWith('tt')) {
+    if (baseId.startsWith('tt')) {
     const found = await tmdb.getByImdbId(baseId);
     if (found) {
       const full = await tmdb.getByTmdbId(found.details.id, found.type);
@@ -341,7 +341,7 @@ async function resolveGlobalStreams(
       const rd = src.release_date || src.first_air_date;
       if (rd) year = parseInt(rd.substring(0, 4), 10);
     }
-  } else if (baseId.startsWith('tmdb:')) {
+    } else if (baseId.startsWith('tmdb:')) {
     const tmdbType = isSeries ? 'series' : 'movie';
     const full = await tmdb.getByTmdbId(baseId.replace('tmdb:', ''), tmdbType);
     if (full) {
@@ -351,7 +351,14 @@ async function resolveGlobalStreams(
     }
   }
 
-  if (!titles.length) return [];
+    // If TMDB is unavailable or the client sends a non-canonical id, use the
+    // id itself as a last-resort query rather than returning a silent empty
+    // response. This keeps IPTV title matching functional during TMDB outages.
+    if (!titles.length) {
+      const fallback = baseId.replace(/^tmdb:/, '').replace(/^tt/, '').trim();
+      if (fallback.length >= 2 && !/^\d+$/.test(fallback)) titles = [fallback];
+    }
+    if (!titles.length) return [];
 
   const kind: MediaKind = isSeries ? 'series' : 'movie';
   const available = await getItems(config, kind);

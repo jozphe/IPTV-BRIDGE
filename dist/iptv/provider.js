@@ -30,8 +30,16 @@ async function getItems(config, kind) {
         });
     }
     if (config.type === 'm3u' && config.m3uUrl) {
-        const parsed = await (0, cache_1.cached)(`m3u:parsed:${fp}`, cache_1.TTL.PLAYLIST, () => (0, m3u_1.parseM3UPlaylist)(config.m3uUrl, config.includedCategories));
-        return parsed.items.filter((item) => item.type === kind);
+        const parsed = await (0, cache_1.cached)(`m3u:parsed:${fp}`, cache_1.TTL.PLAYLIST, () => 
+        // Parse the complete source once. Category filtering belongs after the
+        // parse, otherwise a cache entry created for one selection can poison a
+        // later request with a different category selection.
+        (0, m3u_1.parseM3UPlaylist)(config.m3uUrl));
+        const selected = config.includedCategories?.length
+            ? new Set(config.includedCategories.map(String))
+            : null;
+        return parsed.items.filter((item) => item.type === kind &&
+            (!selected || selected.has(item.category) || selected.has(item.category.toLowerCase().replace(/[^a-z0-9]+/g, '-'))));
     }
     return [];
 }
@@ -44,8 +52,11 @@ async function getCategories(config) {
         });
     }
     if (config.type === 'm3u' && config.m3uUrl) {
-        const parsed = await (0, cache_1.cached)(`m3u:parsed:${fp}`, cache_1.TTL.PLAYLIST, () => (0, m3u_1.parseM3UPlaylist)(config.m3uUrl, config.includedCategories));
-        return parsed.categories;
+        const parsed = await (0, cache_1.cached)(`m3u:parsed:${fp}`, cache_1.TTL.PLAYLIST, () => (0, m3u_1.parseM3UPlaylist)(config.m3uUrl));
+        if (!config.includedCategories?.length)
+            return parsed.categories;
+        const selected = new Set(config.includedCategories.map(String));
+        return parsed.categories.filter((category) => selected.has(category.id) || selected.has(category.name));
     }
     return [];
 }

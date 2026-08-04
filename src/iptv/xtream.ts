@@ -90,11 +90,19 @@ export class XtreamClient {
       headers: { 'User-Agent': 'IPTVSmartersPro/3.0.0' }
     });
 
-    if (!Array.isArray(response.data)) {
+    // A few Xtream panels return an object with a `streams` field, while most
+    // return the array directly.
+    const rawStreams = Array.isArray(response.data)
+      ? response.data
+      : Array.isArray(response.data?.streams)
+        ? response.data.streams
+        : [];
+
+    if (!rawStreams.length) {
       return [];
     }
 
-    return response.data.map((stream: any) => {
+    return rawStreams.map((stream: any) => {
       const title = stream.name || stream.title || 'Untitled Stream';
       const cleaned = cleanTitle(title);
       const streamId = stream.stream_id ?? stream.series_id;
@@ -133,7 +141,7 @@ export class XtreamClient {
       timeout: 15000,
       headers: { 'User-Agent': 'IPTVSmartersPro/3.0.0' }
     });
-    return response.data;
+    return response.data?.series_id || response.data?.episodes ? response.data : {};
   }
 
   /**

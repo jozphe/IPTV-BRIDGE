@@ -31,9 +31,18 @@ export async function getItems(config: UserConfig, kind: MediaKind): Promise<IPT
 
   if (config.type === 'm3u' && config.m3uUrl) {
     const parsed = await cached(`m3u:parsed:${fp}`, TTL.PLAYLIST, () =>
-      parseM3UPlaylist(config.m3uUrl!, config.includedCategories)
+      // Parse the complete source once. Category filtering belongs after the
+      // parse, otherwise a cache entry created for one selection can poison a
+      // later request with a different category selection.
+      parseM3UPlaylist(config.m3uUrl!)
     );
-    return parsed.items.filter((item) => item.type === kind);
+    const selected = config.includedCategories?.length
+      ? new Set(config.includedCategories.map(String))
+      : null;
+    return parsed.items.filter((item) =>
+      item.type === kind &&
+      (!selected || selected.has(item.category) || selected.has(item.category.toLowerCase().replace(/[^a-z0-9]+/g, '-')))
+    );
   }
 
   return [];
@@ -51,9 +60,11 @@ export async function getCategories(config: UserConfig): Promise<IPTVCategory[]>
 
   if (config.type === 'm3u' && config.m3uUrl) {
     const parsed = await cached(`m3u:parsed:${fp}`, TTL.PLAYLIST, () =>
-      parseM3UPlaylist(config.m3uUrl!, config.includedCategories)
+      parseM3UPlaylist(config.m3uUrl!)
     );
-    return parsed.categories;
+    if (!config.includedCategories?.length) return parsed.categories;
+    const selected = new Set(config.includedCategories.map(String));
+    return parsed.categories.filter((category) => selected.has(category.id) || selected.has(category.name));
   }
 
   return [];

@@ -310,6 +310,14 @@ async function resolveGlobalStreams(config, id, type) {
                 year = parseInt(rd.substring(0, 4), 10);
         }
     }
+    // If TMDB is unavailable or the client sends a non-canonical id, use the
+    // id itself as a last-resort query rather than returning a silent empty
+    // response. This keeps IPTV title matching functional during TMDB outages.
+    if (!titles.length) {
+        const fallback = baseId.replace(/^tmdb:/, '').replace(/^tt/, '').trim();
+        if (fallback.length >= 2 && !/^\d+$/.test(fallback))
+            titles = [fallback];
+    }
     if (!titles.length)
         return [];
     const kind = isSeries ? 'series' : 'movie';
