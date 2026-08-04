@@ -1,12 +1,11 @@
 # IPTV Bridge
-
-**Cinema for your Stremio & Nuvio.** Connect an Xtream Codes account or an M3U playlist and turn it into organized catalogs, global search, and automatic TMDB matching — every film and show resolves straight to your own IPTV sources.
+<p align="center">
+  <img src="public/banner.png" width="1200" height= "630" alt="IPTV Bridge logo" />
+</p>
+**Cinema for your Stremio & Nuvio.** 
+Connect an Xtream Codes account or an M3U playlist and turn it into organized catalogs, global search, and automatic TMDB matching — every film and show resolves straight to your own IPTV sources.
 
 Runs entirely **serverless** on the Vercel free tier. No database. No always-on server. Your credentials never leave the manifest link.
-
-<p align="center">
-  <img src="public/logo.svg" width="96" alt="IPTV Bridge logo" />
-</p>
 
 ---
 
