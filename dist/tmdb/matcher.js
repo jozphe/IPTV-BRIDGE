@@ -39,10 +39,9 @@ function matchScore(targetTitle, streamTitle, targetYear) {
         return 0;
     // Exact normalized match is the gold standard
     if (t === s) {
-        // If we know the year and the stream also has a (different) year, be strict
         const sy = (0, cleaner_1.cleanTitle)(streamTitle).year;
         if (targetYear && sy && Math.abs(targetYear - sy) > 1)
-            return 0.6;
+            return 0.7;
         return 1.0;
     }
     const base = string_similarity_1.default.compareTwoStrings(t, s);
@@ -50,31 +49,33 @@ function matchScore(targetTitle, streamTitle, targetYear) {
     const sTokens = s.split(' ').filter(Boolean);
     const tSet = new Set(tTokens);
     const sSet = new Set(sTokens);
-    // Every target word must be present in the stream title, otherwise it's a
-    // different movie (e.g. "Batman" must not match "Batman Begins").
+    // Check if target words are in the stream. IPTV titles always carry extra
+    // metadata (quality, language codes, year), so we can't require perfection.
     const missing = tTokens.filter((w) => !sSet.has(w)).length;
     const extra = sTokens.filter((w) => !tSet.has(w)).length;
-    // Hard reject when target words are missing from the stream
-    if (missing > 0) {
-        // allow a single tiny stopword miss only if base similarity is very high
-        if (missing === 1 && base >= 0.9) {
-            // continue with penalty
-        }
-        else {
-            return Math.min(base, 0.45);
-        }
+    // If too many target words are missing, it's likely a different title
+    if (missing > 1) {
+        return Math.min(base, 0.5);
     }
-    // All target tokens present. Penalize each extra word in the stream title so
-    // "The Batman" strongly beats "The Batman Returns Special Edition".
-    let score = 0.9 - extra * 0.12;
+    // One missing word: only allow if base similarity is high
+    if (missing === 1 && base < 0.85) {
+        return Math.min(base, 0.55);
+    }
+    // All (or nearly all) target tokens present. Penalize extra *significant*
+    // words (3+ chars) more than tiny tags, since a real extra word usually
+    // signals a different title (e.g. "Dune Part Two" vs "Dune").
+    const bigExtra = sTokens.filter((w) => !tSet.has(w) && w.length >= 3 && !/^\d+$/.test(w)).length;
+    let score = 0.9 - bigExtra * 0.16 - Math.max(0, extra - bigExtra) * 0.03;
     score = Math.max(score, base);
-    // Year alignment strongly rewards/penalizes
+    // Year alignment rewards/penalizes, but less aggressively
     const sy = (0, cleaner_1.cleanTitle)(streamTitle).year;
     if (targetYear && sy) {
         if (Math.abs(targetYear - sy) <= 1)
-            score += 0.08;
+            score += 0.06;
+        else if (Math.abs(targetYear - sy) <= 3)
+            score -= 0.1; // close but off
         else
-            score -= 0.35; // wrong year → almost certainly a different title
+            score -= 0.2; // wrong decade → likely different title
     }
     return Math.max(0, Math.min(1, score));
 }
@@ -84,7 +85,7 @@ function matchScore(targetTitle, streamTitle, targetYear) {
  * resolve episodes.
  */
 function rankMatches(targetTitle, streams, opts = {}) {
-    const { targetYear, targetSeason, targetEpisode, altTitles = [], minScore = 0.82 } = opts;
+    const { targetYear, targetSeason, targetEpisode, altTitles = [], minScore = 0.62 } = opts;
     const titles = [targetTitle, ...altTitles].filter(Boolean);
     const matches = [];
     for (const stream of streams) {
@@ -114,7 +115,7 @@ function rankMatches(targetTitle, streams, opts = {}) {
     const deduped = [];
     const topScore = matches.length ? matches[0].score : 0;
     for (const m of matches) {
-        if (m.score < topScore - 0.15)
+        if (m.score < topScore - 0.2)
             break; // keep only near-best matches
         const key = `${normalizeForMatch(m.item.title)}|${m.item.url || m.item.streamId || ''}`;
         if (seen.has(key))
