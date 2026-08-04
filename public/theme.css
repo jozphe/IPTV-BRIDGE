@@ -74,7 +74,10 @@ body {
 #toast { transition: transform .4s cubic-bezier(.34,1.56,.64,1), opacity .3s ease; }
 .ul { background-image: linear-gradient(var(--accent),var(--accent)); background-size: 0% 1px; background-position: 0 100%; background-repeat: no-repeat; transition: background-size .3s ease; }
 .ul:hover { background-size: 100% 1px; }
-[data-reveal] { will-change: transform, opacity; }
+/* Generic scroll reveal - CSS driven so it fires once and never flashes. */
+[data-reveal] { opacity: 0; transform: translateY(24px); will-change: transform, opacity; }
+[data-reveal].shown { opacity: 1; transform: none; transition: opacity .6s ease, transform .6s cubic-bezier(.2,.8,.2,1); }
+@media (prefers-reduced-motion: reduce) { [data-reveal] { opacity: 1; transform: none; } }
 
 /* ---------- Stat cells ---------- */
 .stat { transition: background .3s ease; }

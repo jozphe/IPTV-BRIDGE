@@ -412,50 +412,56 @@
       document.getElementById('marquee-track').innerHTML=seq.map(w=>'<span class="flex items-center gap-12"><span class="display text-4xl text-[var(--paper)]/80">'+w+'</span><span class="w-2 h-2 rounded-full bg-[var(--accent)]"></span></span>').join('');
     })();
 
-    /* GSAP */
-    document.addEventListener('DOMContentLoaded', ()=>{
+    /* Reveal + intro animations */
+    document.addEventListener('DOMContentLoaded', function () {
       lucide.createIcons();
-      var y=document.getElementById('year'); if(y) y.textContent=new Date().getFullYear();
-      if(!window.gsap){
-        document.querySelectorAll('.method-card, .feature-row').forEach(c=>c.classList.add('in'));
-        return;
+      var y = document.getElementById('year'); if (y) y.textContent = new Date().getFullYear();
+
+      var hasIO = 'IntersectionObserver' in window;
+
+      // Generic reveals: one-shot CSS transition, no flash, no re-trigger.
+      var revealEls = document.querySelectorAll('[data-reveal]');
+      if (hasIO) {
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) { entry.target.classList.add('shown'); io.unobserve(entry.target); }
+          });
+        }, { rootMargin: '0px 0px -8% 0px', threshold: 0.12 });
+        revealEls.forEach(function (el) { io.observe(el); });
+      } else {
+        revealEls.forEach(function (el) { el.classList.add('shown'); });
       }
+
+      // Staggered class-toggle groups (method cards, feature rows). Runs once.
+      function batchReveal(selector, triggerSelector, stagger) {
+        var els = Array.prototype.slice.call(document.querySelectorAll(selector));
+        if (!els.length) return;
+        var play = function () { els.forEach(function (el, i) { setTimeout(function () { el.classList.add('in'); }, i * stagger); }); };
+        if (!hasIO) { play(); return; }
+        var trigger = document.querySelector(triggerSelector) || els[0];
+        var obs = new IntersectionObserver(function (entries) {
+          for (var i = 0; i < entries.length; i++) {
+            if (entries[i].isIntersecting) { play(); obs.disconnect(); break; }
+          }
+        }, { rootMargin: '0px 0px -12% 0px', threshold: 0.1 });
+        obs.observe(trigger);
+      }
+      batchReveal('.method-card', '#method-grid', 110);
+      batchReveal('.feature-row', '#feature-list', 100);
+
+      // Hero intro timeline only (runs once on load).
+      if (!window.gsap) return;
       gsap.registerPlugin(ScrollTrigger);
       ScrollTrigger.config({ limitCallbacks: true, ignoreMobileResize: true });
-      const tl=gsap.timeline({defaults:{ease:'power4.out'}});
-      gsap.set('[data-hero-line]',{yPercent:110});
-      tl.to('[data-hero-line]',{yPercent:0,duration:1.1,stagger:0.12},0.15)
-        .from('[data-hero-tag]',{opacity:0,y:12,stagger:0.08,duration:0.6},0.2)
-        .from('[data-hero-sub]',{opacity:0,y:20,duration:0.8},0.6)
-        .from('[data-hero-cta]',{opacity:0,y:20,duration:0.8},0.72)
-        .from('[data-hero-scroll]',{opacity:0,duration:0.8},0.9);
-      // Batch generic reveals into one observer-driven group. This avoids one
-      // ScrollTrigger and one layout calculation per nested element.
-      ScrollTrigger.batch('[data-reveal]', {
-        start: 'top 88%', once: true, interval: 0.08, batchMax: 6,
-        onEnter: batch => gsap.fromTo(batch,
-          { opacity: 0, y: 24 },
-          { opacity: 1, y: 0, duration: 0.55, stagger: 0.055, ease: 'power2.out', overwrite: true, clearProps: 'transform' }
-        )
-      });
-
-      // Method cards: glitch-free staggered reveal via a class toggle
-      const methodCards=gsap.utils.toArray('.method-card');
-      if(methodCards.length){
-        ScrollTrigger.create({
-          trigger:'#method-grid', start:'top 78%', once:true,
-          onEnter:()=>methodCards.forEach((c,i)=>setTimeout(()=>c.classList.add('in'), i*120))
-        });
-      }
-
-      // Alternate feature rows slide in from the left and right as the list
-      // enters the viewport. The CSS fallback keeps them visible without GSAP.
-      const featureRows = document.querySelectorAll('.feature-row');
-      const revealFeatures = () => featureRows.forEach((row, i) => setTimeout(() => row.classList.add('in'), i * 110));
-      if (featureRows.length) {
-        ScrollTrigger.create({ trigger: '#feature-list', start: 'top 82%', once: true, onEnter: revealFeatures });
-      }
+      var tl = gsap.timeline({ defaults: { ease: 'power4.out' } });
+      gsap.set('[data-hero-line]', { yPercent: 110 });
+      tl.to('[data-hero-line]', { yPercent: 0, duration: 1.1, stagger: 0.12 }, 0.15)
+        .from('[data-hero-tag]', { opacity: 0, y: 12, stagger: 0.08, duration: 0.6 }, 0.2)
+        .from('[data-hero-sub]', { opacity: 0, y: 20, duration: 0.8 }, 0.6)
+        .from('[data-hero-cta]', { opacity: 0, y: 20, duration: 0.8 }, 0.72)
+        .from('[data-hero-scroll]', { opacity: 0, duration: 0.8 }, 0.9);
     });
+
   </script>
 </body>
 </html>
