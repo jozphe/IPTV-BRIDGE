@@ -140,15 +140,33 @@ async function handleMeta(req, res) {
                 return;
             }
             const clean = (0, cleaner_1.cleanTitle)(ref.t).cleanTitle || ref.t;
-            // Try TMDB enrichment for movies/series
+            // Try TMDB enrichment for movies/series. TMDB supplies artwork and
+            // canonical metadata; the provider remains the source of playable videos.
             if (ref.k !== 'channel') {
                 const tmdbType = ref.k === 'movie' ? 'movie' : 'series';
                 const found = await tmdb.bestSearchMatch(clean, tmdbType, ref.y);
                 if (found) {
                     const full = await tmdb.getByTmdbId(found.id, tmdbType);
                     const base = tmdb.formatToStremioMeta(full || found, tmdbType, id);
-                    // For series, expose episodes as playable videos under our id
-                    if (ref.k === 'series' && full) {
+                    // For series, expose provider episodes rather than every TMDB
+                    // episode. This prevents Stremio from showing episodes which the IPTV
+                    // account does not actually carry.
+                    if (ref.k === 'series' && config.type === 'xtream' && ref.sid !== undefined) {
+                        const client = new xtream_1.XtreamClient(config.host, config.username, config.password);
+                        const providerEpisodes = await (0, cache_1.cached)(`xt:all-episodes:${ref.sid}`, cache_1.TTL.STREAMS, () => client.listAllEpisodes(ref.sid));
+                        base.videos = providerEpisodes.map((ep) => ({
+                            id: `${id}:${ep.season}:${ep.episode}`,
+                            title: ep.title,
+                            season: ep.season,
+                            episode: ep.episode,
+                            released: undefined,
+                            overview: undefined
+                        }));
+                    }
+                    else if (ref.k === 'series' && full) {
+                        // M3U fallback: use TMDB episodes only when the playlist does not
+                        // expose provider episode IDs. Stream resolution still filters the
+                        // flat M3U entries by season/episode.
                         const seasons = (full.seasons || [])
                             .map((s) => s.season_number)
                             .filter((n) => n && n > 0);
@@ -330,6 +348,12 @@ async function resolveGlobalStreams(config, id, type) {
                 break; // first solid match wins
         }
         return out;
+    }
+    // Some clients request the series meta id itself before selecting a video.
+    // Return no generic series stream rather than leaking unrelated series
+    // entries into the title's source list.
+    if (config.type === 'xtream' && season === undefined && episode === undefined) {
+        return [];
     }
     return [];
 }

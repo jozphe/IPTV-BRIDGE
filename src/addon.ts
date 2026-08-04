@@ -159,7 +159,8 @@ export async function handleMeta(req: Request, res: Response) {
 
       const clean = cleanTitle(ref.t).cleanTitle || ref.t;
 
-      // Try TMDB enrichment for movies/series
+      // Try TMDB enrichment for movies/series. TMDB supplies artwork and
+      // canonical metadata; the provider remains the source of playable videos.
       if (ref.k !== 'channel') {
         const tmdbType = ref.k === 'movie' ? 'movie' : 'series';
         const found = await tmdb.bestSearchMatch(clean, tmdbType, ref.y);
@@ -167,8 +168,28 @@ export async function handleMeta(req: Request, res: Response) {
           const full = await tmdb.getByTmdbId(found.id, tmdbType);
           const base = tmdb.formatToStremioMeta(full || found, tmdbType, id);
 
-          // For series, expose episodes as playable videos under our id
-          if (ref.k === 'series' && full) {
+          // For series, expose provider episodes rather than every TMDB
+          // episode. This prevents Stremio from showing episodes which the IPTV
+          // account does not actually carry.
+          if (ref.k === 'series' && config.type === 'xtream' && ref.sid !== undefined) {
+            const client = new XtreamClient(config.host!, config.username!, config.password!);
+            const providerEpisodes = await cached(
+              `xt:all-episodes:${ref.sid}`,
+              TTL.STREAMS,
+              () => client.listAllEpisodes(ref.sid!)
+            );
+            base.videos = providerEpisodes.map((ep) => ({
+              id: `${id}:${ep.season}:${ep.episode}`,
+              title: ep.title,
+              season: ep.season,
+              episode: ep.episode,
+              released: undefined,
+              overview: undefined
+            }));
+          } else if (ref.k === 'series' && full) {
+            // M3U fallback: use TMDB episodes only when the playlist does not
+            // expose provider episode IDs. Stream resolution still filters the
+            // flat M3U entries by season/episode.
             const seasons: number[] = (full.seasons || [])
               .map((s: any) => s.season_number)
               .filter((n: number) => n && n > 0);
@@ -335,7 +356,7 @@ async function resolveGlobalStreams(
   const kind: MediaKind = isSeries ? 'series' : 'movie';
   const available = await getItems(config, kind);
 
-  const matches = rankMatches(titles[0], available, {
+    const matches = rankMatches(titles[0], available, {
     targetYear: year,
     altTitles: titles.slice(1),
     // Series entries won't have SxxEyy in the title, so don't episode-filter here
@@ -346,13 +367,13 @@ async function resolveGlobalStreams(
 
   if (!matches.length) return [];
 
-  // Movies (or M3U flat episodes): direct URLs already present
-  if (!isSeries || config.type === 'm3u') {
-    return itemsToStreams(matches);
-  }
+    // Movies (or M3U flat episodes): direct URLs already present
+    if (!isSeries || config.type === 'm3u') {
+      return itemsToStreams(matches);
+    }
 
   // Xtream series: take best matching series, resolve the requested episode
-  if (config.type === 'xtream' && season !== undefined && episode !== undefined) {
+    if (config.type === 'xtream' && season !== undefined && episode !== undefined) {
     const client = new XtreamClient(config.host!, config.username!, config.password!);
     const out: StremioStream[] = [];
     for (const m of matches.slice(0, 3)) {
@@ -373,7 +394,14 @@ async function resolveGlobalStreams(
       if (out.length) break; // first solid match wins
     }
     return out;
-  }
+    }
 
-  return [];
+    // Some clients request the series meta id itself before selecting a video.
+    // Return no generic series stream rather than leaking unrelated series
+    // entries into the title's source list.
+    if (config.type === 'xtream' && season === undefined && episode === undefined) {
+      return [];
+    }
+
+    return [];
 }

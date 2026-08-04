@@ -166,6 +166,34 @@ export class XtreamClient {
     return out;
   }
 
+  /** List all provider episodes with ready-to-play URLs. */
+  public async listAllEpisodes(
+    seriesId: string | number
+  ): Promise<Array<{ season: number; episode: number; title: string; url: string; quality?: string }>> {
+    const info = await this.getSeriesInfo(seriesId);
+    const episodesBySeason = info?.episodes;
+    if (!episodesBySeason || typeof episodesBySeason !== 'object') return [];
+
+    const out: Array<{ season: number; episode: number; title: string; url: string; quality?: string }> = [];
+    for (const seasonKey of Object.keys(episodesBySeason)) {
+      const list: any[] = episodesBySeason[seasonKey] || [];
+      for (const ep of list) {
+        const episode = parseInt(String(ep.episode_num), 10);
+        if (!Number.isFinite(episode)) continue;
+        const season = parseInt(String(ep.season ?? seasonKey), 10) || 1;
+        const ext = ep.container_extension || 'mp4';
+        out.push({
+          season,
+          episode,
+          title: ep.title || `Episode ${episode}`,
+          url: `${this.host}/series/${this.username}/${this.password}/${ep.id}.${ext}`,
+          quality: ep.info?.video?.height ? `${ep.info.video.height}p` : undefined
+        });
+      }
+    }
+    return out;
+  }
+
   public buildEpisodeUrl(episodeId: string | number, extension: string = 'mp4'): string {
     return `${this.host}/series/${this.username}/${this.password}/${episodeId}.${extension}`;
   }
