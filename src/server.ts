@@ -74,6 +74,12 @@ app.get('/manifest.json', (req, res) => {
   res.json(getManifest(config, getBaseUrl(req)));
 });
 
+// Public ownership-validation manifest for stremio-addons.net.
+app.get('/demo-manifest.json', (req, res) => {
+  res.setHeader('Cache-Control', 'public, max-age=300');
+  res.json(getManifest(decodeConfig(''), getBaseUrl(req)));
+});
+
 app.get('/:config/manifest.json', (req, res) => {
   const config = decodeConfig(req.params.config);
   res.json(getManifest(config, getBaseUrl(req)));

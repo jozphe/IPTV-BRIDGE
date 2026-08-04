@@ -1,0 +1,50 @@
+{
+  "id": "org.iptv.bridge",
+  "version": "1.0.1",
+  "name": "IPTV Bridge (Stremio & Nuvio)",
+  "description": "Serverless Xtream and M3U IPTV addon with VOD movies, live channels, series, TMDB resolution, and exact-title stream matching.",
+  "logo": "https://YOUR-DEPLOYMENT-DOMAIN/logo.png",
+  "resources": [
+    {
+      "name": "catalog",
+      "types": ["tv", "movie", "series"]
+    },
+    {
+      "name": "meta",
+      "types": ["tv", "movie", "series"],
+      "idPrefixes": ["iptv:"]
+    },
+    {
+      "name": "stream",
+      "types": ["movie", "series", "tv"],
+      "idPrefixes": ["iptv:", "tt", "tmdb:"]
+    }
+  ],
+  "types": ["tv", "movie", "series"],
+  "catalogs": [
+    {
+      "type": "tv",
+      "id": "iptv_live",
+      "name": "IPTV Live Channels"
+    },
+    {
+      "type": "movie",
+      "id": "iptv_movies",
+      "name": "IPTV Movies"
+    },
+    {
+      "type": "series",
+      "id": "iptv_series",
+      "name": "IPTV Series"
+    }
+  ],
+  "idPrefixes": ["iptv:", "tt", "tmdb:"],
+  "behaviorHints": {
+    "configurable": true,
+    "configurationRequired": false
+  },
+  "stremioAddonsConfig": {
+    "issuer": "https://stremio-addons.net",
+    "signature": "eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0..sDeakIt0DgWeZfmybeXOtg.4CyianytJ8NJmM7wv_juUymvNauoIMuz72EhdOouvhkXKEJNJ_UYV6f9WO7LHkN6USr1lGBcpvcs06asWY_26pmgQRT7AAeckgy2bTxJHqSfvq3sRkGiVcD0tYdejeTf.HkVET5t7lZd4yv_2mUiTow"
+  }
+}
