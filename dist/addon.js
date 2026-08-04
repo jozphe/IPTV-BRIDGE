@@ -19,7 +19,11 @@ function stremioTypeToKind(type) {
         return 'movie';
     return 'series';
 }
-const FALLBACK_POSTER = 'https://iptv-bridge.vercel.app/logo.png';
+function getPublicLogo(req) {
+    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const host = req.headers['x-forwarded-host'] || req.get('host') || '';
+    return `${proto}://${host}/logo.png`;
+}
 function getManifest(config, baseUrl) {
     const catalogs = [];
     if (config.includeLive !== false) {
@@ -46,10 +50,12 @@ function getManifest(config, baseUrl) {
             extra: [{ name: 'search', isRequired: false }, { name: 'genre', isRequired: false }, { name: 'skip', isRequired: false }]
         });
     }
-    const logo = baseUrl ? `${baseUrl}/logo.png` : FALLBACK_POSTER;
+    // Use the bundled raster logo from public/logo.png. Stremio/Nuvio clients
+    // reliably render this PNG, unlike the previous external placeholder.
+    const logo = `${baseUrl || ''}/logo.png`;
     return {
         id: 'org.stremio.nuvio.iptv',
-        version: '1.0.0',
+        version: '1.0.1',
         name: 'IPTV Bridge (Stremio & Nuvio)',
         description: 'Serverless Xtream & M3U IPTV Addon with TMDB Resolution, Global Search & Clean Categorization',
         logo,
@@ -73,6 +79,7 @@ function getManifest(config, baseUrl) {
 async function handleCatalog(req, res) {
     try {
         const config = (0, config_1.decodeConfig)(req.params.config || '');
+        const fallbackPoster = getPublicLogo(req);
         const { type, extra } = req.params;
         let searchQuery = '';
         let skip = 0;
@@ -114,7 +121,7 @@ async function handleCatalog(req, res) {
                 id: (0, itemId_1.encodeItemId)(item),
                 type,
                 name: (0, cleaner_1.cleanTitle)(item.title).cleanTitle || item.title,
-                poster: poster || FALLBACK_POSTER,
+                poster: poster || fallbackPoster,
                 posterShape: kind === 'channel' ? 'square' : 'poster',
                 description,
                 year
@@ -132,6 +139,7 @@ async function handleMeta(req, res) {
     try {
         const { id, type } = req.params;
         const config = (0, config_1.decodeConfig)(req.params.config || '');
+        const fallbackPoster = getPublicLogo(req);
         const tmdb = new tmdb_1.TMDBClient(config.tmdbApiKey);
         if ((0, itemId_1.isItemId)(id)) {
             const { ref } = (0, itemId_1.decodeItemId)(id);
@@ -197,7 +205,7 @@ async function handleMeta(req, res) {
                     id,
                     type,
                     name: clean,
-                    poster: ref.lg || FALLBACK_POSTER,
+                    poster: ref.lg || fallbackPoster,
                     posterShape: ref.k === 'channel' ? 'square' : 'poster',
                     background: ref.lg,
                     description: ref.k === 'channel' ? 'Live IPTV channel' : 'IPTV title',

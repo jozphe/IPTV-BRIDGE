@@ -15,7 +15,11 @@ function stremioTypeToKind(type: string): MediaKind {
   return 'series';
 }
 
-const FALLBACK_POSTER = 'https://iptv-bridge.vercel.app/logo.png';
+function getPublicLogo(req: Request): string {
+  const proto = (req.headers['x-forwarded-proto'] as string) || req.protocol || 'https';
+  const host = (req.headers['x-forwarded-host'] as string) || req.get('host') || '';
+  return `${proto}://${host}/logo.png`;
+}
 
 export function getManifest(config: UserConfig, baseUrl?: string): StremioManifest {
   const catalogs = [];
@@ -47,11 +51,13 @@ export function getManifest(config: UserConfig, baseUrl?: string): StremioManife
     });
   }
 
-  const logo = baseUrl ? `${baseUrl}/logo.png` : FALLBACK_POSTER;
+  // Use the bundled raster logo from public/logo.png. Stremio/Nuvio clients
+  // reliably render this PNG, unlike the previous external placeholder.
+  const logo = `${baseUrl || ''}/logo.png`;
 
   return {
     id: 'org.stremio.nuvio.iptv',
-    version: '1.0.0',
+    version: '1.0.1',
     name: 'IPTV Bridge (Stremio & Nuvio)',
     description: 'Serverless Xtream & M3U IPTV Addon with TMDB Resolution, Global Search & Clean Categorization',
     logo,
@@ -77,6 +83,7 @@ export function getManifest(config: UserConfig, baseUrl?: string): StremioManife
 export async function handleCatalog(req: Request, res: Response) {
   try {
     const config = decodeConfig(req.params.config || '');
+    const fallbackPoster = getPublicLogo(req);
     const { type, extra } = req.params;
 
     let searchQuery = '';
@@ -127,7 +134,7 @@ export async function handleCatalog(req: Request, res: Response) {
           id: encodeItemId(item),
           type,
           name: cleanTitle(item.title).cleanTitle || item.title,
-          poster: poster || FALLBACK_POSTER,
+          poster: poster || fallbackPoster,
           posterShape: kind === 'channel' ? 'square' : 'poster',
           description,
           year
@@ -148,6 +155,7 @@ export async function handleMeta(req: Request, res: Response) {
   try {
     const { id, type } = req.params;
     const config = decodeConfig(req.params.config || '');
+    const fallbackPoster = getPublicLogo(req);
     const tmdb = new TMDBClient(config.tmdbApiKey);
 
     if (isItemId(id)) {
@@ -222,7 +230,7 @@ export async function handleMeta(req: Request, res: Response) {
           id,
           type,
           name: clean,
-          poster: ref.lg || FALLBACK_POSTER,
+          poster: ref.lg || fallbackPoster,
           posterShape: ref.k === 'channel' ? 'square' : 'poster',
           background: ref.lg,
           description: ref.k === 'channel' ? 'Live IPTV channel' : 'IPTV title',
