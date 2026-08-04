@@ -56,9 +56,9 @@ export function getManifest(config: UserConfig, baseUrl?: string): StremioManife
   const logo = `${baseUrl || ''}/logo.png`;
 
   return {
-    id: 'org.stremio.nuvio.iptv',
+    id: 'org.iptv.bridge',
     version: '1.0.1',
-    name: 'IPTV Bridge (Stremio & Nuvio)',
+    name: 'IPTV Bridge',
     description: 'Serverless Xtream & M3U IPTV Addon with TMDB Resolution, Global Search & Clean Categorization',
     logo,
     resources: [

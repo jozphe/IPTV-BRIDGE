@@ -25,22 +25,51 @@
     <header class="max-w-3xl mb-16">
       <p class="text-xs uppercase tracking-[0.25em] text-[var(--muted)] mb-4">Documentation</p>
       <h1 class="display text-6xl sm:text-8xl mb-5">Use it. Diagnose it.<br><span class="italic-accent">Keep it playing.</span></h1>
-      <p class="text-[var(--paper)]/65 font-sans leading-relaxed">End-user guidance for connecting a provider, installing the addon, understanding buffering and identifying whether a problem comes from IPTV Bridge, the IPTV provider or your network.</p>
+      <p class="text-[var(--paper)]/65 font-sans leading-relaxed">End-user guidance for connecting a provider, installing the addon in Stremio or Nuvio, finding IPTV sources inside their normal catalogs, and diagnosing provider or network playback problems.</p>
     </header>
 
     <div class="grid lg:grid-cols-[230px_1fr] gap-12">
-      <aside class="lg:sticky lg:top-24 self-start border-l border-[var(--line)] pl-5 text-sm font-sans space-y-3 text-[var(--muted)]">
-        <a href="#quick-start" class="block hover:text-[var(--paper)]">Quick start</a><a href="#loading" class="block hover:text-[var(--paper)]">Slow source pages</a><a href="#buffering" class="block hover:text-[var(--paper)]">Buffering</a><a href="#diagnose" class="block hover:text-[var(--paper)]">Diagnose the cause</a><a href="#privacy" class="block hover:text-[var(--paper)]">Privacy</a>
+      <aside id="docs-nav" class="lg:sticky lg:top-24 self-start border-l border-[var(--line)] pl-5 text-sm font-sans space-y-3 text-[var(--muted)]">
+        <a data-doc-link href="#quick-start" class="doc-link block hover:text-[var(--paper)]">Quick start</a><a data-doc-link href="#stremio" class="doc-link block hover:text-[var(--paper)]">Stremio integration</a><a data-doc-link href="#nuvio" class="doc-link block hover:text-[var(--paper)]">Nuvio integration</a><a data-doc-link href="#using" class="doc-link block hover:text-[var(--paper)]">Using the addon</a><a data-doc-link href="#loading" class="doc-link block hover:text-[var(--paper)]">Slow source pages</a><a data-doc-link href="#buffering" class="doc-link block hover:text-[var(--paper)]">Buffering</a><a data-doc-link href="#diagnose" class="doc-link block hover:text-[var(--paper)]">Diagnose the cause</a><a data-doc-link href="#privacy" class="doc-link block hover:text-[var(--paper)]">Privacy</a>
       </aside>
       <article class="space-y-14">
         <section id="quick-start"><h2 class="display text-4xl mb-5">Quick start</h2><ol class="space-y-3 text-sm text-[var(--paper)]/65 font-sans list-decimal pl-5"><li>Open <a href="/configure" class="text-[var(--accent)]">Configure</a>.</li><li>Choose Xtream Codes or M3U and enter your provider details.</li><li>Use <b class="text-[var(--paper)]">Test connection</b>, then <b class="text-[var(--paper)]">Connect</b>.</li><li>Select media types/categories and generate the manifest.</li><li>Install in Stremio, or paste the HTTPS manifest URL into Nuvio.</li></ol></section>
 
+        <section id="stremio">
+          <p class="text-xs uppercase tracking-[0.2em] text-[var(--muted)] mb-3">Player integration</p>
+          <h2 class="display text-4xl mb-5">Install in Stremio</h2>
+          <div class="space-y-6 font-sans text-sm text-[var(--paper)]/65">
+            <div class="grid sm:grid-cols-[44px_1fr] gap-4"><span class="w-10 h-10 rounded-xl border border-[var(--line)] grid place-items-center text-[var(--accent)] font-mono">1</span><div><b class="text-[var(--paper)]">Generate a configured manifest.</b><p class="mt-1">Complete the configurator. The generated URL contains your provider settings and selected categories.</p></div></div>
+            <div class="grid sm:grid-cols-[44px_1fr] gap-4"><span class="w-10 h-10 rounded-xl border border-[var(--line)] grid place-items-center text-[var(--accent)] font-mono">2</span><div><b class="text-[var(--paper)]">Choose Install to Stremio.</b><p class="mt-1">The button opens a <code class="font-mono text-xs text-[var(--accent)]">stremio://</code> link. Confirm the installation in the Stremio app.</p></div></div>
+            <div class="grid sm:grid-cols-[44px_1fr] gap-4"><span class="w-10 h-10 rounded-xl border border-[var(--line)] grid place-items-center text-[var(--accent)] font-mono">3</span><div><b class="text-[var(--paper)]">Find the addon in My Addons.</b><p class="mt-1">IPTV Bridge adds Live TV, Movies and Series catalogs according to the options you enabled.</p></div></div>
+            <div class="grid sm:grid-cols-[44px_1fr] gap-4"><span class="w-10 h-10 rounded-xl border border-[var(--line)] grid place-items-center text-[var(--accent)] font-mono">4</span><div><b class="text-[var(--paper)]">Use normal Stremio catalogs and search.</b><p class="mt-1">Open a movie or episode from Stremio's Popular, Featured or Search results. If the same title exists in your IPTV library, IPTV Bridge appears in the Streams list with the available FHD/4K variants.</p></div></div>
+          </div>
+          <div class="border-l-2 border-[var(--accent)] pl-5 mt-7 text-sm text-[var(--paper)]/60 font-sans"><b class="text-[var(--paper)]">Manual installation:</b> in Stremio Web, open Addons and paste the generated HTTPS manifest URL if the one-click protocol link does not launch.</div>
+        </section>
+
+        <section id="nuvio">
+          <p class="text-xs uppercase tracking-[0.2em] text-[var(--muted)] mb-3">Player integration</p>
+          <h2 class="display text-4xl mb-5">Install in Nuvio</h2>
+          <div class="border border-[var(--line)] rounded-3xl overflow-hidden font-sans text-sm">
+            <div class="grid sm:grid-cols-[140px_1fr] gap-2 p-5 border-b border-[var(--line)]"><b>Copy</b><span class="text-[var(--paper)]/60">Use <b class="text-[var(--paper)]">Copy manifest URL</b> in the final configuration step. Nuvio needs the HTTPS URL, not the <code class="font-mono text-xs">stremio://</code> URL.</span></div>
+            <div class="grid sm:grid-cols-[140px_1fr] gap-2 p-5 border-b border-[var(--line)]"><b>Add</b><span class="text-[var(--paper)]/60">Open Nuvio's Addons area, choose the option to add an addon by URL, paste the full manifest URL and confirm.</span></div>
+            <div class="grid sm:grid-cols-[140px_1fr] gap-2 p-5 border-b border-[var(--line)]"><b>Browse</b><span class="text-[var(--paper)]/60">Your IPTV catalogs appear in Nuvio after its addon list refreshes. Restart Nuvio if they do not appear immediately.</span></div>
+            <div class="grid sm:grid-cols-[140px_1fr] gap-2 p-5"><b>Play</b><span class="text-[var(--paper)]/60">Open a normal Nuvio movie or episode. IPTV Bridge resolves its IMDB/TMDB identity against your IPTV provider and returns only the exact matching quality variants.</span></div>
+          </div>
+        </section>
+
+        <section id="using"><h2 class="display text-4xl mb-5">What appears where</h2><div class="grid sm:grid-cols-2 gap-3 font-sans">
+          <div class="border border-[var(--line)] rounded-2xl p-5"><h3 class="font-semibold mb-2">IPTV Bridge catalogs</h3><p class="text-xs text-[var(--paper)]/55 leading-relaxed">Browse provider content by type. Provider logos are shown immediately; richer TMDB artwork and episode information are resolved when a title opens.</p></div>
+          <div class="border border-[var(--line)] rounded-2xl p-5"><h3 class="font-semibold mb-2">Popular and search catalogs</h3><p class="text-xs text-[var(--paper)]/55 leading-relaxed">The title comes from Stremio/Nuvio. IPTV Bridge contributes only streams for an exact IPTV title match, including separate FHD, 4K or other available quality URLs.</p></div>
+          <div class="border border-[var(--line)] rounded-2xl p-5"><h3 class="font-semibold mb-2">Movies</h3><p class="text-xs text-[var(--paper)]/55 leading-relaxed">The addon compares normalized title identity and year while ignoring provider tags, codecs, language labels and quality markers.</p></div>
+          <div class="border border-[var(--line)] rounded-2xl p-5"><h3 class="font-semibold mb-2">Series</h3><p class="text-xs text-[var(--paper)]/55 leading-relaxed">The provider's series list is matched first. When an episode is selected, Xtream episode data resolves the requested season and episode to its playable URL.</p></div>
+        </div></section>
+
         <section id="loading"><h2 class="display text-4xl mb-5">Slow source pages</h2><div class="border border-[var(--line)] rounded-3xl p-6 space-y-4 text-sm text-[var(--paper)]/65 font-sans"><p>The first request may be slower because a serverless instance must start and the provider list must be fetched. Later requests are cached.</p><p>IPTV Bridge returns catalog previews directly from provider data. Full TMDB metadata is loaded only when a title is opened.</p><p>If every request remains slow, the provider API is usually responding slowly or returning a very large playlist.</p></div></section>
 
-        <section id="buffering"><h2 class="display text-4xl mb-5">Who causes buffering?</h2><div class="grid sm:grid-cols-3 gap-3">
+        <section id="buffering"><h2 class="display text-4xl mb-5">What usually causes buffering?</h2><p class="text-sm text-[var(--paper)]/60 font-sans mb-5">After a source is selected, the player connects directly to the IPTV URL. Playback quality is therefore mainly determined by the provider feed and the network path to it.</p><div class="grid sm:grid-cols-2 gap-3">
           <div class="border border-[var(--line)] rounded-2xl p-5"><i data-lucide="radio" class="w-5 h-5 text-[var(--accent)] mb-4"></i><h3 class="font-semibold text-sm mb-2">IPTV provider</h3><p class="text-xs text-[var(--paper)]/55 leading-relaxed">Most common. Overloaded servers, unstable source, connection limits or transcoding cause stalls.</p></div>
           <div class="border border-[var(--line)] rounded-2xl p-5"><i data-lucide="wifi" class="w-5 h-5 text-[var(--accent)] mb-4"></i><h3 class="font-semibold text-sm mb-2">Your network</h3><p class="text-xs text-[var(--paper)]/55 leading-relaxed">Weak Wi-Fi, ISP congestion, VPN routing or insufficient bandwidth can interrupt playback.</p></div>
-          <div class="border border-[var(--line)] rounded-2xl p-5"><i data-lucide="waypoints" class="w-5 h-5 text-[var(--accent)] mb-4"></i><h3 class="font-semibold text-sm mb-2">IPTV Bridge</h3><p class="text-xs text-[var(--paper)]/55 leading-relaxed">The addon resolves and hands the direct URL to the player. It does not proxy or transcode video, so it normally cannot cause playback buffering.</p></div>
         </div></section>
 
         <section id="diagnose"><h2 class="display text-4xl mb-5">Diagnose the cause</h2><div class="divide-y divide-[var(--line)] border-y border-[var(--line)] font-sans text-sm">
@@ -55,6 +84,20 @@
       </article>
     </div>
   </main>
-  <script src="/theme.js"></script><script>document.addEventListener('DOMContentLoaded',()=>lucide.createIcons());</script>
+  <script src="/theme.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      const sections = [...document.querySelectorAll('article > section[id]')];
+      const links = [...document.querySelectorAll('[data-doc-link]')];
+      const activate = (id) => links.forEach(link => link.classList.toggle('active', link.getAttribute('href') === '#' + id));
+      const observer = new IntersectionObserver(entries => {
+        const visible = entries.filter(entry => entry.isIntersecting).sort((a,b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible) activate(visible.target.id);
+      }, { rootMargin: '-18% 0px -62% 0px', threshold: [0, .2, .55] });
+      sections.forEach(section => observer.observe(section));
+      if (sections[0]) activate(sections[0].id);
+    });
+  </script>
 </body>
 </html>

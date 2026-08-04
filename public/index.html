@@ -218,11 +218,11 @@
   <section id="features" class="relative z-10 px-5 sm:px-10 py-20 border-t border-[var(--line)]">
     <div class="max-w-[1400px] mx-auto">
       <p class="text-sm font-sans tracking-[0.25em] uppercase text-[var(--muted)] mb-10" data-reveal>What you get</p>
-      <ul class="divide-y divide-[var(--line)]">
-        <li class="py-7 flex items-center justify-between gap-6 group" data-reveal data-cursor><span class="display text-4xl sm:text-6xl transition-transform duration-500 group-hover:translate-x-3">Clean categories</span><span class="text-[var(--muted)] text-sm font-sans max-w-xs text-right hidden sm:block">Live, Movies & Series sorted into tidy catalogs.</span></li>
-        <li class="py-7 flex items-center justify-between gap-6 group" data-reveal data-cursor><span class="display text-4xl sm:text-6xl transition-transform duration-500 group-hover:translate-x-3">Global search</span><span class="text-[var(--muted)] text-sm font-sans max-w-xs text-right hidden sm:block">Find any title, stream from your provider.</span></li>
-        <li class="py-7 flex items-center justify-between gap-6 group" data-reveal data-cursor><span class="display text-4xl sm:text-6xl transition-transform duration-500 group-hover:translate-x-3">TMDB matching</span><span class="text-[var(--muted)] text-sm font-sans max-w-xs text-right hidden sm:block">Posters, ratings, IMDB & TMDB resolution.</span></li>
-        <li class="py-7 flex items-center justify-between gap-6 group" data-reveal data-cursor><span class="display text-4xl sm:text-6xl transition-transform duration-500 group-hover:translate-x-3">Zero servers</span><span class="text-[var(--muted)] text-sm font-sans max-w-xs text-right hidden sm:block">Credentials live in your link. Nothing stored.</span></li>
+      <ul id="feature-list" class="divide-y divide-[var(--line)] overflow-hidden">
+        <li class="feature-row py-7 flex items-center justify-between gap-6 group" data-side="left" data-cursor><span class="display text-4xl sm:text-6xl transition-transform duration-500 group-hover:translate-x-3">Clean categories</span><span class="text-[var(--muted)] text-sm font-sans max-w-xs text-right hidden sm:block">Live, Movies & Series sorted into tidy catalogs.</span></li>
+        <li class="feature-row py-7 flex items-center justify-between gap-6 group" data-side="right" data-cursor><span class="display text-4xl sm:text-6xl transition-transform duration-500 group-hover:translate-x-3">Global search</span><span class="text-[var(--muted)] text-sm font-sans max-w-xs text-right hidden sm:block">Find any title, stream from your provider.</span></li>
+        <li class="feature-row py-7 flex items-center justify-between gap-6 group" data-side="left" data-cursor><span class="display text-4xl sm:text-6xl transition-transform duration-500 group-hover:translate-x-3">TMDB matching</span><span class="text-[var(--muted)] text-sm font-sans max-w-xs text-right hidden sm:block">Posters, ratings, IMDB & TMDB resolution.</span></li>
+        <li class="feature-row py-7 flex items-center justify-between gap-6 group" data-side="right" data-cursor><span class="display text-4xl sm:text-6xl transition-transform duration-500 group-hover:translate-x-3">Zero servers</span><span class="text-[var(--muted)] text-sm font-sans max-w-xs text-right hidden sm:block">Credentials live in your link. Nothing stored.</span></li>
       </ul>
     </div>
   </section>
@@ -416,7 +416,10 @@
     document.addEventListener('DOMContentLoaded', ()=>{
       lucide.createIcons();
       var y=document.getElementById('year'); if(y) y.textContent=new Date().getFullYear();
-      if(!window.gsap){ document.querySelectorAll('.method-card').forEach(c=>c.classList.add('in')); return; }
+      if(!window.gsap){
+        document.querySelectorAll('.method-card, .feature-row').forEach(c=>c.classList.add('in'));
+        return;
+      }
       gsap.registerPlugin(ScrollTrigger);
       const tl=gsap.timeline({defaults:{ease:'power4.out'}});
       gsap.set('[data-hero-line]',{yPercent:110});
@@ -436,6 +439,14 @@
           trigger:'#method-grid', start:'top 78%', once:true,
           onEnter:()=>methodCards.forEach((c,i)=>setTimeout(()=>c.classList.add('in'), i*120))
         });
+      }
+
+      // Alternate feature rows slide in from the left and right as the list
+      // enters the viewport. The CSS fallback keeps them visible without GSAP.
+      const featureRows = document.querySelectorAll('.feature-row');
+      const revealFeatures = () => featureRows.forEach((row, i) => setTimeout(() => row.classList.add('in'), i * 110));
+      if (featureRows.length) {
+        ScrollTrigger.create({ trigger: '#feature-list', start: 'top 82%', once: true, onEnter: revealFeatures });
       }
     });
   </script>

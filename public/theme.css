@@ -110,6 +110,15 @@ body {
 .method-card { opacity: 0; transform: translateY(28px); }
 .method-card.in { opacity: 1; transform: translateY(0); transition: opacity .6s ease, transform .6s cubic-bezier(.2,.8,.2,1); }
 
+/* Alternating feature row entrance */
+.feature-row { opacity: 0; transition: opacity .7s ease, transform .8s cubic-bezier(.2,.8,.2,1); }
+.feature-row[data-side="left"] { transform: translateX(-64px); }
+.feature-row[data-side="right"] { transform: translateX(64px); }
+.feature-row.in { opacity: 1; transform: translateX(0); }
+@media (prefers-reduced-motion: reduce) {
+  .feature-row { opacity: 1; transform: none !important; }
+}
+
 /* ---------- Under the hood: signal flow ---------- */
 .flow-pulse {
   left: 8%;
@@ -148,6 +157,12 @@ body {
 
 .hood-row { transition: background .25s ease, padding-left .25s ease; border-radius: 10px; }
 .hood-row:hover { background: rgba(255,94,43,0.04); padding-left: 8px; }
+
+/* Docs scroll-spy */
+.doc-link { position: relative; transition: color .25s ease, transform .25s ease; }
+.doc-link::before { content: ''; position: absolute; left: -1.3125rem; top: 50%; width: 0; height: 1.5rem; transform: translateY(-50%); background: var(--accent); transition: width .25s ease; }
+.doc-link.active { color: var(--accent); transform: translateX(4px); }
+.doc-link.active::before { width: 2px; }
 
 .source-link {
   display: inline-grid;
