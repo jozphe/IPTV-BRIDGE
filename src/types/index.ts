@@ -76,6 +76,7 @@ export interface StremioMeta {
   type: string;
   name: string;
   poster?: string;
+  posterShape?: 'square' | 'poster' | 'landscape';
   background?: string;
   logo?: string;
   description?: string;
@@ -90,6 +91,7 @@ export interface StremioMeta {
     title: string;
     released?: string;
     thumbnail?: string;
+    overview?: string;
     season?: number;
     episode?: number;
   }>;

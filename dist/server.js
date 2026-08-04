@@ -43,10 +43,10 @@ app.get('/catalog/:type/:id.json', addon_1.handleCatalog);
 app.get('/:config/catalog/:type/:id.json', addon_1.handleCatalog);
 app.get('/catalog/:type/:id/:extra.json', addon_1.handleCatalog);
 app.get('/:config/catalog/:type/:id/:extra.json', addon_1.handleCatalog);
-// Meta routes
+// Meta routes (id carries our base64url blob + optional :season:episode)
 app.get('/meta/:type/:id.json', addon_1.handleMeta);
 app.get('/:config/meta/:type/:id.json', addon_1.handleMeta);
-// Stream routes
+// Stream routes (id carries our base64url blob or tt/tmdb id + suffixes)
 app.get('/stream/:type/:id.json', addon_1.handleStream);
 app.get('/:config/stream/:type/:id.json', addon_1.handleStream);
 if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {

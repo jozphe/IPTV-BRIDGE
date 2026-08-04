@@ -38,13 +38,46 @@ class TMDBClient {
         return (0, cache_1.cached)(`tmdb:${type}:${cleanId}`, cache_1.TTL.TMDB, async () => {
             try {
                 const endpoint = type === 'movie' ? 'movie' : 'tv';
-                const url = `${this.baseUrl}/${endpoint}/${encodeURIComponent(cleanId)}?api_key=${this.apiKey}&append_to_response=external_ids,credits`;
+                const url = `${this.baseUrl}/${endpoint}/${encodeURIComponent(cleanId)}?api_key=${this.apiKey}&append_to_response=external_ids,credits,alternative_titles`;
                 const res = await axios_1.default.get(url, { timeout: 8000 });
                 return res.data;
             }
             catch (err) {
                 console.error(`TMDB lookup by ID ${tmdbId} failed:`, err);
                 return null;
+            }
+        });
+    }
+    /** Collect the primary + alternative titles for better IPTV matching. */
+    collectTitles(tmdbData, type) {
+        const titles = new Set();
+        const primary = type === 'movie'
+            ? (tmdbData.title || tmdbData.original_title)
+            : (tmdbData.name || tmdbData.original_name);
+        if (primary)
+            titles.add(primary);
+        if (tmdbData.original_title)
+            titles.add(tmdbData.original_title);
+        if (tmdbData.original_name)
+            titles.add(tmdbData.original_name);
+        const alts = tmdbData.alternative_titles?.titles || tmdbData.alternative_titles?.results || [];
+        for (const a of alts) {
+            if (a?.title)
+                titles.add(a.title);
+        }
+        return [...titles];
+    }
+    /** Fetch the episode list for a season (for series meta). */
+    async getSeasonEpisodes(tmdbId, season) {
+        const cleanId = String(tmdbId).replace(/^tmdb:/, '');
+        return (0, cache_1.cached)(`tmdb:season:${cleanId}:${season}`, cache_1.TTL.TMDB, async () => {
+            try {
+                const url = `${this.baseUrl}/tv/${encodeURIComponent(cleanId)}/season/${season}?api_key=${this.apiKey}`;
+                const res = await axios_1.default.get(url, { timeout: 8000 });
+                return res.data?.episodes || [];
+            }
+            catch {
+                return [];
             }
         });
     }
@@ -72,9 +105,9 @@ class TMDBClient {
             return [];
         }
     }
-    formatToStremioMeta(tmdbData, type) {
+    formatToStremioMeta(tmdbData, type, overrideId) {
         const isMovie = type === 'movie';
-        const id = tmdbData.external_ids?.imdb_id || `tmdb:${tmdbData.id}`;
+        const id = overrideId || tmdbData.external_ids?.imdb_id || `tmdb:${tmdbData.id}`;
         const name = isMovie ? tmdbData.title || tmdbData.original_title : tmdbData.name || tmdbData.original_name;
         const releaseDate = isMovie ? tmdbData.release_date : tmdbData.first_air_date;
         const year = releaseDate ? releaseDate.substring(0, 4) : undefined;
@@ -84,11 +117,31 @@ class TMDBClient {
             name: name || 'Unknown Title',
             poster: tmdbData.poster_path ? `https://image.tmdb.org/t/p/w500${tmdbData.poster_path}` : undefined,
             background: tmdbData.backdrop_path ? `https://image.tmdb.org/t/p/w1280${tmdbData.backdrop_path}` : undefined,
+            logo: undefined,
             description: tmdbData.overview,
             year,
+            releaseInfo: year,
             imdbRating: tmdbData.vote_average ? String(Math.round(tmdbData.vote_average * 10) / 10) : undefined,
             genres: tmdbData.genres ? tmdbData.genres.map((g) => g.name) : []
         };
+    }
+    /** Search and return the single best TMDB match for a raw title/year. */
+    async bestSearchMatch(title, type, year) {
+        const key = `tmdb:search:${type}:${title.toLowerCase()}:${year || ''}`;
+        return (0, cache_1.cached)(key, cache_1.TTL.TMDB, async () => {
+            try {
+                const endpoint = type === 'movie' ? 'movie' : 'tv';
+                let url = `${this.baseUrl}/search/${endpoint}?api_key=${this.apiKey}&query=${encodeURIComponent(title)}`;
+                if (year)
+                    url += type === 'movie' ? `&year=${year}` : `&first_air_date_year=${year}`;
+                const res = await axios_1.default.get(url, { timeout: 8000 });
+                const results = res.data?.results;
+                return Array.isArray(results) && results.length ? results[0] : null;
+            }
+            catch {
+                return null;
+            }
+        });
     }
 }
 exports.TMDBClient = TMDBClient;

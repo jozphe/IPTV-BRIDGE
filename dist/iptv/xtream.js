@@ -63,11 +63,14 @@ class XtreamClient {
         return categories;
     }
     async getStreams(type, categoryId) {
+        // NOTE: Xtream Codes uses `get_series` (not `get_series_streams`) for the
+        // series list endpoint. Using the wrong action returns an empty body, which
+        // is why series never appeared.
         let action = 'get_live_streams';
         if (type === 'movie')
             action = 'get_vod_streams';
         if (type === 'series')
-            action = 'get_series_streams';
+            action = 'get_series';
         let url = `${this.baseApiUrl}&action=${action}`;
         if (categoryId) {
             // Strip prefix if needed
@@ -75,17 +78,19 @@ class XtreamClient {
             url += `&category_id=${encodeURIComponent(rawCatId)}`;
         }
         const response = await axios_1.default.get(url, {
-            timeout: 12000,
+            timeout: 15000,
             headers: { 'User-Agent': 'IPTVSmartersPro/3.0.0' }
         });
         if (!Array.isArray(response.data)) {
             return [];
         }
         return response.data.map((stream) => {
-            const title = stream.name || 'Untitled Stream';
+            const title = stream.name || stream.title || 'Untitled Stream';
             const cleaned = (0, cleaner_1.cleanTitle)(title);
-            const streamId = stream.stream_id || stream.series_id;
+            const streamId = stream.stream_id ?? stream.series_id;
             const ext = stream.container_extension || 'mp4';
+            // Series entries have no direct playable URL; episodes are resolved on
+            // demand via get_series_info. Movies/live get a direct URL.
             let streamUrl = '';
             if (type === 'live') {
                 streamUrl = `${this.host}/live/${this.username}/${this.password}/${streamId}.m3u8`;
@@ -93,28 +98,54 @@ class XtreamClient {
             else if (type === 'movie') {
                 streamUrl = `${this.host}/movie/${this.username}/${this.password}/${streamId}.${ext}`;
             }
-            else {
-                streamUrl = `${this.host}/series/${this.username}/${this.password}/${streamId}.${ext}`;
-            }
+            const rawYear = stream.year || stream.releaseDate || stream.release_date;
             return {
                 id: `xt_${type}_${streamId}`,
                 streamId,
                 title,
                 cleanTitle: cleaned.cleanTitle,
                 type: type === 'live' ? 'channel' : type,
-                category: stream.category_name || type,
-                logo: stream.stream_icon || stream.cover,
+                category: stream.category_name || String(stream.category_id || type),
+                logo: stream.stream_icon || stream.cover || stream.movie_image,
                 url: streamUrl,
-                year: cleaned.year || (stream.year ? parseInt(stream.year, 10) : undefined),
+                year: cleaned.year || (rawYear ? parseInt(String(rawYear).substring(0, 4), 10) : undefined),
                 containerExtension: ext
             };
         });
     }
-    async getSeriesEpisodes(seriesId) {
+    async getSeriesInfo(seriesId) {
         const rawId = String(seriesId).replace(/^xt_series_/, '');
         const url = `${this.baseApiUrl}&action=get_series_info&series_id=${encodeURIComponent(rawId)}`;
-        const response = await axios_1.default.get(url, { timeout: 10000 });
+        const response = await axios_1.default.get(url, {
+            timeout: 15000,
+            headers: { 'User-Agent': 'IPTVSmartersPro/3.0.0' }
+        });
         return response.data;
+    }
+    /**
+     * Resolve the playable episode URLs for a given series + season + episode.
+     * Returns an array (a season/episode can have multiple quality variants).
+     */
+    async getEpisodeStreams(seriesId, season, episode) {
+        const info = await this.getSeriesInfo(seriesId);
+        const episodesBySeason = info?.episodes;
+        if (!episodesBySeason)
+            return [];
+        const seasonKey = String(season);
+        const list = episodesBySeason[seasonKey] || [];
+        const out = [];
+        for (const ep of list) {
+            const epNum = parseInt(String(ep.episode_num), 10);
+            if (epNum !== episode)
+                continue;
+            const ext = ep.container_extension || 'mp4';
+            out.push({
+                url: `${this.host}/series/${this.username}/${this.password}/${ep.id}.${ext}`,
+                title: ep.title || `Episode ${episode}`,
+                quality: ep.info?.video?.height ? `${ep.info.video.height}p` : undefined
+            });
+        }
+        return out;
     }
     buildEpisodeUrl(episodeId, extension = 'mp4') {
         return `${this.host}/series/${this.username}/${this.password}/${episodeId}.${extension}`;

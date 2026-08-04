@@ -48,11 +48,11 @@ app.get('/:config/catalog/:type/:id.json', handleCatalog);
 app.get('/catalog/:type/:id/:extra.json', handleCatalog);
 app.get('/:config/catalog/:type/:id/:extra.json', handleCatalog);
 
-// Meta routes
+// Meta routes (id carries our base64url blob + optional :season:episode)
 app.get('/meta/:type/:id.json', handleMeta);
 app.get('/:config/meta/:type/:id.json', handleMeta);
 
-// Stream routes
+// Stream routes (id carries our base64url blob or tt/tmdb id + suffixes)
 app.get('/stream/:type/:id.json', handleStream);
 app.get('/:config/stream/:type/:id.json', handleStream);
 
