@@ -421,6 +421,7 @@
         return;
       }
       gsap.registerPlugin(ScrollTrigger);
+      ScrollTrigger.config({ limitCallbacks: true, ignoreMobileResize: true });
       const tl=gsap.timeline({defaults:{ease:'power4.out'}});
       gsap.set('[data-hero-line]',{yPercent:110});
       tl.to('[data-hero-line]',{yPercent:0,duration:1.1,stagger:0.12},0.15)
@@ -428,9 +429,15 @@
         .from('[data-hero-sub]',{opacity:0,y:20,duration:0.8},0.6)
         .from('[data-hero-cta]',{opacity:0,y:20,duration:0.8},0.72)
         .from('[data-hero-scroll]',{opacity:0,duration:0.8},0.9);
-      gsap.utils.toArray('[data-reveal]').forEach(el=>{gsap.from(el,{opacity:0,y:40,duration:0.9,ease:'power3.out',scrollTrigger:{trigger:el,start:'top 85%'}});});
-      gsap.to('h1.display',{yPercent:18,ease:'none',scrollTrigger:{trigger:'header',start:'top top',end:'bottom top',scrub:true}});
-      gsap.to('[data-hero-scroll]',{opacity:0,ease:'none',scrollTrigger:{trigger:'header',start:'top top',end:'40% top',scrub:true}});
+      // Batch generic reveals into one observer-driven group. This avoids one
+      // ScrollTrigger and one layout calculation per nested element.
+      ScrollTrigger.batch('[data-reveal]', {
+        start: 'top 88%', once: true, interval: 0.08, batchMax: 6,
+        onEnter: batch => gsap.fromTo(batch,
+          { opacity: 0, y: 24 },
+          { opacity: 1, y: 0, duration: 0.55, stagger: 0.055, ease: 'power2.out', overwrite: true, clearProps: 'transform' }
+        )
+      });
 
       // Method cards: glitch-free staggered reveal via a class toggle
       const methodCards=gsap.utils.toArray('.method-card');
