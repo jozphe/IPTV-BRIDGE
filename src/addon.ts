@@ -107,40 +107,18 @@ export async function handleCatalog(req: Request, res: Response) {
 
     const page = items.slice(skip, skip + 60);
 
-    // Enrich movie/series posters via TMDB (channels keep their logo).
-    const tmdb = new TMDBClient(config.tmdbApiKey);
-    const metas: StremioMeta[] = await Promise.all(
-      page.map(async (item) => {
-        let poster = item.logo;
-        let description = `Category: ${item.category}`;
-        let year: string | number | undefined = item.year;
-
-        if (kind !== 'channel') {
-          const tmdbType = kind === 'movie' ? 'movie' : 'series';
-          const found = await tmdb.bestSearchMatch(
-            cleanTitle(item.title).cleanTitle,
-            tmdbType,
-            item.year
-          );
-          if (found) {
-            if (found.poster_path) poster = `https://image.tmdb.org/t/p/w500${found.poster_path}`;
-            if (found.overview) description = found.overview;
-            const rd = found.release_date || found.first_air_date;
-            if (rd) year = rd.substring(0, 4);
-          }
-        }
-
-        return {
-          id: encodeItemId(item),
-          type,
-          name: cleanTitle(item.title).cleanTitle || item.title,
-          poster: poster || fallbackPoster,
-          posterShape: kind === 'channel' ? 'square' : 'poster',
-          description,
-          year
-        } as StremioMeta;
-      })
-    );
+    // Catalogs must be fast. Do not block this response on dozens of TMDB
+    // searches; Xtream/M3U artwork is enough for previews and full TMDB
+    // metadata is resolved lazily when the user opens an item.
+    const metas: StremioMeta[] = page.map((item) => ({
+      id: encodeItemId(item),
+      type,
+      name: cleanTitle(item.title).cleanTitle || item.title,
+      poster: item.logo || fallbackPoster,
+      posterShape: kind === 'channel' ? 'square' : 'poster',
+      description: `Category: ${item.category}`,
+      year: item.year
+    }));
 
     res.json({ metas });
   } catch (err) {
@@ -335,16 +313,24 @@ async function resolveGlobalStreams(
 
   const isSeries = type === 'series' || season !== undefined;
   const tmdb = new TMDBClient(config.tmdbApiKey);
+  const kind: MediaKind = isSeries ? 'series' : 'movie';
+
+  // Provider retrieval and TMDB resolution are independent. Start the IPTV
+  // request immediately so first-load latency is the slower of the two calls,
+  // rather than their combined duration.
+  const availablePromise = getItems(config, kind);
 
   // Resolve canonical title(s) + year from the id
   let titles: string[] = [];
   let year: number | undefined;
 
-    if (baseId.startsWith('tt')) {
+  if (baseId.startsWith('tt')) {
     const found = await tmdb.getByImdbId(baseId);
     if (found) {
-      const full = await tmdb.getByTmdbId(found.details.id, found.type);
-      const src = full || found.details;
+      // The find response already contains canonical title/year. Avoid a
+      // second sequential TMDB details request on the time-sensitive stream
+      // endpoint; alternate titles are useful but not worth delaying playback.
+      const src = found.details;
       titles = tmdb.collectTitles(src, found.type);
       const rd = src.release_date || src.first_air_date;
       if (rd) year = parseInt(rd.substring(0, 4), 10);
@@ -368,8 +354,7 @@ async function resolveGlobalStreams(
     }
     if (!titles.length) return [];
 
-  const kind: MediaKind = isSeries ? 'series' : 'movie';
-  const available = await getItems(config, kind);
+  const available = await availablePromise;
 
     const matches = rankMatches(titles[0], available, {
     targetYear: year,

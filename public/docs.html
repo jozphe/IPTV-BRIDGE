@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Docs — IPTV Bridge</title>
+  <meta name="description" content="IPTV Bridge setup, playback, buffering and troubleshooting documentation." />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>tailwind.config={theme:{extend:{fontFamily:{serif:['"Instrument Serif"','serif'],sans:['"Space Grotesk"','sans-serif'],mono:['"JetBrains Mono"','monospace']}}}};</script>
+  <link rel="stylesheet" href="/theme.css" />
+</head>
+<body class="antialiased">
+  <div class="grain"></div><div class="vignette"></div><div id="cursor"></div>
+  <nav id="nav" class="fixed top-0 inset-x-0 z-50 px-5 sm:px-10 py-4 flex items-center justify-between transition-all duration-300">
+    <a href="/" class="flex items-center gap-2.5"><img src="/logo.svg" class="w-7 h-7 rounded-lg" alt="" /><span class="font-sans font-semibold">IPTV Bridge</span></a>
+    <div class="flex items-center gap-2"><a href="/" class="ghost h-10 px-4 rounded-xl inline-flex items-center text-sm font-semibold">Home</a><a href="/configure" class="ember h-10 px-4 rounded-xl inline-flex items-center text-sm font-semibold">Configure</a></div>
+  </nav>
+
+  <main class="relative z-10 max-w-[1100px] mx-auto px-5 sm:px-10 pt-32 pb-24">
+    <header class="max-w-3xl mb-16">
+      <p class="text-xs uppercase tracking-[0.25em] text-[var(--muted)] mb-4">Documentation</p>
+      <h1 class="display text-6xl sm:text-8xl mb-5">Use it. Diagnose it.<br><span class="italic-accent">Keep it playing.</span></h1>
+      <p class="text-[var(--paper)]/65 font-sans leading-relaxed">End-user guidance for connecting a provider, installing the addon, understanding buffering and identifying whether a problem comes from IPTV Bridge, the IPTV provider or your network.</p>
+    </header>
+
+    <div class="grid lg:grid-cols-[230px_1fr] gap-12">
+      <aside class="lg:sticky lg:top-24 self-start border-l border-[var(--line)] pl-5 text-sm font-sans space-y-3 text-[var(--muted)]">
+        <a href="#quick-start" class="block hover:text-[var(--paper)]">Quick start</a><a href="#loading" class="block hover:text-[var(--paper)]">Slow source pages</a><a href="#buffering" class="block hover:text-[var(--paper)]">Buffering</a><a href="#diagnose" class="block hover:text-[var(--paper)]">Diagnose the cause</a><a href="#privacy" class="block hover:text-[var(--paper)]">Privacy</a>
+      </aside>
+      <article class="space-y-14">
+        <section id="quick-start"><h2 class="display text-4xl mb-5">Quick start</h2><ol class="space-y-3 text-sm text-[var(--paper)]/65 font-sans list-decimal pl-5"><li>Open <a href="/configure" class="text-[var(--accent)]">Configure</a>.</li><li>Choose Xtream Codes or M3U and enter your provider details.</li><li>Use <b class="text-[var(--paper)]">Test connection</b>, then <b class="text-[var(--paper)]">Connect</b>.</li><li>Select media types/categories and generate the manifest.</li><li>Install in Stremio, or paste the HTTPS manifest URL into Nuvio.</li></ol></section>
+
+        <section id="loading"><h2 class="display text-4xl mb-5">Slow source pages</h2><div class="border border-[var(--line)] rounded-3xl p-6 space-y-4 text-sm text-[var(--paper)]/65 font-sans"><p>The first request may be slower because a serverless instance must start and the provider list must be fetched. Later requests are cached.</p><p>IPTV Bridge returns catalog previews directly from provider data. Full TMDB metadata is loaded only when a title is opened.</p><p>If every request remains slow, the provider API is usually responding slowly or returning a very large playlist.</p></div></section>
+
+        <section id="buffering"><h2 class="display text-4xl mb-5">Who causes buffering?</h2><div class="grid sm:grid-cols-3 gap-3">
+          <div class="border border-[var(--line)] rounded-2xl p-5"><i data-lucide="radio" class="w-5 h-5 text-[var(--accent)] mb-4"></i><h3 class="font-semibold text-sm mb-2">IPTV provider</h3><p class="text-xs text-[var(--paper)]/55 leading-relaxed">Most common. Overloaded servers, unstable source, connection limits or transcoding cause stalls.</p></div>
+          <div class="border border-[var(--line)] rounded-2xl p-5"><i data-lucide="wifi" class="w-5 h-5 text-[var(--accent)] mb-4"></i><h3 class="font-semibold text-sm mb-2">Your network</h3><p class="text-xs text-[var(--paper)]/55 leading-relaxed">Weak Wi-Fi, ISP congestion, VPN routing or insufficient bandwidth can interrupt playback.</p></div>
+          <div class="border border-[var(--line)] rounded-2xl p-5"><i data-lucide="waypoints" class="w-5 h-5 text-[var(--accent)] mb-4"></i><h3 class="font-semibold text-sm mb-2">IPTV Bridge</h3><p class="text-xs text-[var(--paper)]/55 leading-relaxed">The addon resolves and hands the direct URL to the player. It does not proxy or transcode video, so it normally cannot cause playback buffering.</p></div>
+        </div></section>
+
+        <section id="diagnose"><h2 class="display text-4xl mb-5">Diagnose the cause</h2><div class="divide-y divide-[var(--line)] border-y border-[var(--line)] font-sans text-sm">
+          <div class="py-4 grid sm:grid-cols-[180px_1fr] gap-2"><b>Only one channel buffers</b><span class="text-[var(--paper)]/60">That source/provider feed is the likely cause.</span></div>
+          <div class="py-4 grid sm:grid-cols-[180px_1fr] gap-2"><b>Everything buffers</b><span class="text-[var(--paper)]/60">Test another network, disable VPN and check provider status.</span></div>
+          <div class="py-4 grid sm:grid-cols-[180px_1fr] gap-2"><b>Source appears slowly</b><span class="text-[var(--paper)]/60">Provider API/TMDB lookup or serverless cold start; this is separate from video buffering.</span></div>
+          <div class="py-4 grid sm:grid-cols-[180px_1fr] gap-2"><b>Source appears but fails</b><span class="text-[var(--paper)]/60">Credentials, subscription expiry, connection limit, unsupported codec or provider URL.</span></div>
+          <div class="py-4 grid sm:grid-cols-[180px_1fr] gap-2"><b>No source appears</b><span class="text-[var(--paper)]/60">The title is unavailable or named differently in the provider library.</span></div>
+        </div></section>
+
+        <section id="privacy"><h2 class="display text-4xl mb-5">Privacy</h2><p class="text-sm text-[var(--paper)]/65 font-sans leading-relaxed">Configuration is compressed into your manifest URL. Treat that URL like a password because it contains provider access details. IPTV Bridge does not store credentials in a database.</p></section>
+      </article>
+    </div>
+  </main>
+  <script src="/theme.js"></script><script>document.addEventListener('DOMContentLoaded',()=>lucide.createIcons());</script>
+</body>
+</html>

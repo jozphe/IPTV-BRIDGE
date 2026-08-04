@@ -28,6 +28,10 @@ app.get('/configure', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/configure.html'));
 });
 
+app.get('/docs', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/docs.html'));
+});
+
 // Stremio/Nuvio append `/configure` to the addon's base URL. For a configured
 // install that base URL already contains the encoded config, so the request is
 // `/<config>/configure`. Serve the same page (it self-hydrates from the path).
