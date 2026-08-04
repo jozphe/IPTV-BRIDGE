@@ -2,6 +2,16 @@ import axios from 'axios';
 import { IPTVItem, IPTVCategory } from '../types';
 import { cleanTitle } from './cleaner';
 
+function unwrapArray(data: any, key: string): any[] {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.[key])) return data[key];
+  if (data && typeof data === 'object') {
+    const values = Object.values(data);
+    if (values.length && values.every((value) => value && typeof value === 'object')) return values;
+  }
+  return [];
+}
+
 export class XtreamClient {
   private host: string;
   private username: string;
@@ -43,20 +53,24 @@ export class XtreamClient {
         axios.get(`${this.baseApiUrl}&action=get_series_categories`, { timeout: 10000 })
       ]);
 
-      if (liveRes.status === 'fulfilled' && Array.isArray(liveRes.value.data)) {
-        liveRes.value.data.forEach((cat: any) => {
+      const liveData = liveRes.status === 'fulfilled' ? unwrapArray(liveRes.value.data, 'categories') : [];
+      const vodData = vodRes.status === 'fulfilled' ? unwrapArray(vodRes.value.data, 'categories') : [];
+      const seriesData = seriesRes.status === 'fulfilled' ? unwrapArray(seriesRes.value.data, 'categories') : [];
+
+      if (liveData.length) {
+        liveData.forEach((cat: any) => {
           categories.push({ id: `live_${cat.category_id}`, name: cat.category_name, type: 'live' });
         });
       }
 
-      if (vodRes.status === 'fulfilled' && Array.isArray(vodRes.value.data)) {
-        vodRes.value.data.forEach((cat: any) => {
+      if (vodData.length) {
+        vodData.forEach((cat: any) => {
           categories.push({ id: `vod_${cat.category_id}`, name: cat.category_name, type: 'movie' });
         });
       }
 
-      if (seriesRes.status === 'fulfilled' && Array.isArray(seriesRes.value.data)) {
-        seriesRes.value.data.forEach((cat: any) => {
+      if (seriesData.length) {
+        seriesData.forEach((cat: any) => {
           categories.push({ id: `series_${cat.category_id}`, name: cat.category_name, type: 'series' });
         });
       }
@@ -158,7 +172,7 @@ export class XtreamClient {
     if (!episodesBySeason) return [];
 
     const seasonKey = String(season);
-    const list: any[] = episodesBySeason[seasonKey] || [];
+    const list: any[] = episodesBySeason[seasonKey] || episodesBySeason[Number(seasonKey)] || [];
     const out: Array<{ url: string; title: string; quality?: string }> = [];
 
     for (const ep of list) {

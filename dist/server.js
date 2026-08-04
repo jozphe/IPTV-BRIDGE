@@ -9,11 +9,32 @@ const path_1 = __importDefault(require("path"));
 const config_1 = require("./utils/config");
 const addon_1 = require("./addon");
 const testConnection_1 = require("./api/testConnection");
+const cache_1 = require("./utils/cache");
+const security_1 = require("./utils/security");
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 7000;
-app.use((0, cors_1.default)({ origin: '*' }));
-app.use(express_1.default.json());
-app.use(express_1.default.static(path_1.default.join(__dirname, '../public')));
+app.set('trust proxy', 1);
+app.disable('x-powered-by');
+app.use(security_1.securityHeaders);
+app.use((0, cors_1.default)({ origin: '*', methods: ['GET', 'POST', 'OPTIONS'], allowedHeaders: ['Content-Type'] }));
+app.use(express_1.default.json({ limit: '32kb', strict: true }));
+app.use(express_1.default.static(path_1.default.join(__dirname, '../public'), {
+    maxAge: '7d',
+    immutable: false,
+    setHeaders(res, filePath) {
+        if (/\.(png|svg|css|js)$/i.test(filePath))
+            res.setHeader('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
+    }
+}));
+app.use((req, res, next) => {
+    const started = Date.now();
+    res.on('finish', () => {
+        if (req.path.includes('/catalog/') || req.path.includes('/stream/') || req.path.includes('/meta/')) {
+            console.info(JSON.stringify({ event: 'request', path: req.path.replace(/^\/[^/]+\//, '/:config/'), status: res.statusCode, total_ms: Date.now() - started }));
+        }
+    });
+    next();
+});
 // Resolve the public base URL of the current request (works behind Vercel proxy)
 function getBaseUrl(req) {
     const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
@@ -30,6 +51,10 @@ app.get('/configure', (req, res) => {
 app.get('/docs', (req, res) => {
     res.sendFile(path_1.default.join(__dirname, '../public/docs.html'));
 });
+app.get('/health', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ ok: true, uptime: Math.round(process.uptime()), cache: (0, cache_1.cacheStats)(), version: '1.0.1' });
+});
 // Stremio/Nuvio append `/configure` to the addon's base URL. For a configured
 // install that base URL already contains the encoded config, so the request is
 // `/<config>/configure`. Serve the same page (it self-hydrates from the path).
@@ -37,7 +62,7 @@ app.get('/:config/configure', (req, res) => {
     res.sendFile(path_1.default.join(__dirname, '../public/configure.html'));
 });
 // Real-time IPTV Connection Test API
-app.post('/api/test-connection', testConnection_1.handleTestConnection);
+app.post('/api/test-connection', (0, security_1.rateLimit)(12, 60_000), testConnection_1.handleTestConnection);
 // Manifest routes
 app.get('/manifest.json', (req, res) => {
     const config = (0, config_1.decodeConfig)('');

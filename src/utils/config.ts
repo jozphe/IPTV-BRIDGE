@@ -1,5 +1,8 @@
 import LZString from 'lz-string';
 import { UserConfig } from '../types';
+import { isSafeUpstreamUrl } from './security';
+
+const MAX_CONFIG_LENGTH = 16_384;
 
 export const defaultConfig: UserConfig = {
   type: 'm3u',
@@ -17,6 +20,7 @@ export function encodeConfig(config: UserConfig): string {
 export function decodeConfig(encoded: string): UserConfig {
   try {
     if (!encoded) return defaultConfig;
+    if (encoded.length > MAX_CONFIG_LENGTH) return defaultConfig;
 
     // Some clients preserve an escaped path segment when opening an addon
     // link. Decode it before passing it to LZString.
@@ -36,6 +40,20 @@ export function decodeConfig(encoded: string): UserConfig {
     console.error('Failed to decode config parameter:', err);
     return defaultConfig;
   }
+}
+
+export function validateConfig(config: UserConfig): string | null {
+  if (config.type === 'xtream') {
+    if (!config.host || !config.username || !config.password) return 'Xtream host, username and password are required.';
+    if (config.username.length > 512 || config.password.length > 512) return 'Provider credentials are too long.';
+    if (!isSafeUpstreamUrl(config.host)) return 'Xtream host must be a valid public HTTP or HTTPS URL.';
+  } else {
+    if (!config.m3uUrl) return 'M3U playlist URL is required.';
+    if (!isSafeUpstreamUrl(config.m3uUrl)) return 'M3U URL must be a valid public HTTP or HTTPS URL.';
+  }
+  if (config.tmdbApiKey && config.tmdbApiKey.length > 512) return 'TMDB key is too long.';
+  if (config.includedCategories && config.includedCategories.length > 2000) return 'Too many categories selected.';
+  return null;
 }
 
 function normalizeConfig(value: any): UserConfig {

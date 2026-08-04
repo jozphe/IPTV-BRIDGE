@@ -5,6 +5,7 @@ exports.handleCatalog = handleCatalog;
 exports.handleMeta = handleMeta;
 exports.handleStream = handleStream;
 const config_1 = require("./utils/config");
+const security_1 = require("./utils/security");
 const provider_1 = require("./iptv/provider");
 const xtream_1 = require("./iptv/xtream");
 const tmdb_1 = require("./tmdb/tmdb");
@@ -79,6 +80,11 @@ function getManifest(config, baseUrl) {
 async function handleCatalog(req, res) {
     try {
         const config = (0, config_1.decodeConfig)(req.params.config || '');
+        if ((0, config_1.validateConfig)(config)) {
+            res.json({ metas: [] });
+            return;
+        }
+        res.setHeader('Cache-Control', 'private, max-age=120, stale-while-revalidate=300');
         const fallbackPoster = getPublicLogo(req);
         const { type, extra } = req.params;
         let searchQuery = '';
@@ -121,7 +127,16 @@ async function handleCatalog(req, res) {
 async function handleMeta(req, res) {
     try {
         const { id, type } = req.params;
+        if (!(0, security_1.isSafeProtocolId)(id)) {
+            res.status(400).json({ meta: null });
+            return;
+        }
         const config = (0, config_1.decodeConfig)(req.params.config || '');
+        if ((0, config_1.validateConfig)(config)) {
+            res.json({ meta: null });
+            return;
+        }
+        res.setHeader('Cache-Control', 'private, max-age=1800, stale-while-revalidate=3600');
         const fallbackPoster = getPublicLogo(req);
         const tmdb = new tmdb_1.TMDBClient(config.tmdbApiKey);
         if ((0, itemId_1.isItemId)(id)) {
@@ -208,7 +223,16 @@ async function handleMeta(req, res) {
 async function handleStream(req, res) {
     try {
         const { id, type } = req.params;
+        if (!(0, security_1.isSafeProtocolId)(id)) {
+            res.status(400).json({ streams: [] });
+            return;
+        }
         const config = (0, config_1.decodeConfig)(req.params.config || '');
+        if ((0, config_1.validateConfig)(config)) {
+            res.json({ streams: [] });
+            return;
+        }
+        res.setHeader('Cache-Control', 'private, max-age=30');
         /* Case A: one of OUR catalog items was opened */
         if ((0, itemId_1.isItemId)(id)) {
             const streams = await resolveOwnItemStreams(config, id);
@@ -319,7 +343,12 @@ async function resolveGlobalStreams(config, id, type) {
     if (!titles.length)
         return [];
     const available = await availablePromise;
-    const matches = (0, matcher_1.rankMatches)(titles[0], available, {
+    // Exact-title index handles the common case without scanning thousands of
+    // provider entries. Fall back to ranked matching only when no identity key
+    // exists (unusual provider naming).
+    const indexed = await (0, provider_1.getTitleMatches)(config, kind, titles);
+    const candidatePool = indexed.length ? indexed : available;
+    const matches = (0, matcher_1.rankMatches)(titles[0], candidatePool, {
         targetYear: year,
         altTitles: titles.slice(1),
         // Series entries won't have SxxEyy in the title, so don't episode-filter here

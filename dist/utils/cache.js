@@ -13,7 +13,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TTL = void 0;
 exports.getCached = getCached;
+exports.getStaleCached = getStaleCached;
 exports.setCached = setCached;
+exports.staleWhileRevalidate = staleWhileRevalidate;
+exports.cacheStats = cacheStats;
 exports.cached = cached;
 const store = new Map();
 const inflight = new Map();
@@ -45,9 +48,37 @@ function getCached(key) {
     }
     return entry.value;
 }
+function getStaleCached(key) {
+    const entry = store.get(key);
+    if (!entry)
+        return undefined;
+    if (entry.expiresAt <= Date.now()) {
+        store.delete(key);
+        return undefined;
+    }
+    return entry.value;
+}
 function setCached(key, value, ttlMs) {
-    store.set(key, { value, expiresAt: Date.now() + ttlMs });
+    store.set(key, { value, staleAt: Date.now() + ttlMs, expiresAt: Date.now() + ttlMs * 2 });
     evictIfNeeded();
+}
+async function staleWhileRevalidate(key, ttlMs, producer) {
+    const entry = store.get(key);
+    const now = Date.now();
+    if (entry && entry.expiresAt > now) {
+        if (entry.staleAt <= now && !inflight.has(key)) {
+            const refresh = producer()
+                .then((value) => { setCached(key, value, ttlMs); return value; })
+                .finally(() => inflight.delete(key));
+            inflight.set(key, refresh);
+            void refresh.catch(() => undefined);
+        }
+        return entry.value;
+    }
+    return cached(key, ttlMs, producer);
+}
+function cacheStats() {
+    return { entries: store.size, inflight: inflight.size };
 }
 /**
  * Resolve a value from cache, or run `producer` once and cache the result.

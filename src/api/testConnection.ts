@@ -2,10 +2,17 @@ import { Request, Response } from 'express';
 import { XtreamClient } from '../iptv/xtream';
 import { parseM3UPlaylist } from '../iptv/m3u';
 import axios from 'axios';
+import { UserConfig } from '../types';
+import { validateConfig } from '../utils/config';
 
 export async function handleTestConnection(req: Request, res: Response) {
   try {
     const { type, host, username, password, m3uUrl, tmdbApiKey } = req.body;
+    const configError = validateConfig({ type, host, username, password, m3uUrl } as UserConfig);
+    if (configError) {
+      res.status(400).json({ success: false, error: configError });
+      return;
+    }
 
     let categories: any[] = [];
     let statusMessage = 'Connection successful!';
@@ -30,8 +37,11 @@ export async function handleTestConnection(req: Request, res: Response) {
       }
 
       const client = new XtreamClient(host, username, password);
-      const authData = await client.authenticate();
-      categories = await client.getCategories();
+      const [authData, loadedCategories] = await Promise.all([
+        client.authenticate(),
+        client.getCategories()
+      ]);
+      categories = loadedCategories;
       
       const userInfo = authData?.user_info;
       statusMessage = `Connected! User: ${userInfo?.username || username} (Status: ${userInfo?.status || 'Active'})`;
@@ -68,10 +78,16 @@ export async function handleTestConnection(req: Request, res: Response) {
 
     res.status(400).json({ success: false, error: 'Invalid configuration type.' });
   } catch (err: any) {
-    console.error('Test Connection Error:', err);
-    res.status(500).json({
+    const status = err?.response?.status;
+    const message = status === 401 || status === 403
+      ? 'Provider rejected the credentials.'
+      : err?.code === 'ECONNABORTED'
+        ? 'Provider timed out. Try again or contact the IPTV provider.'
+        : err.message || 'Failed to connect to IPTV provider. Check URL or credentials.';
+    console.error('Test Connection Error:', { code: err?.code, status });
+    res.status(status === 401 || status === 403 ? 401 : 502).json({
       success: false,
-      error: err.message || 'Failed to connect to IPTV provider. Check URL or credentials.'
+      error: message
     });
   }
 }

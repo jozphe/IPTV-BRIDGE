@@ -12,6 +12,7 @@
 
 interface CacheEntry<T> {
   value: T;
+  staleAt: number;
   expiresAt: number;
 }
 
@@ -45,9 +46,43 @@ export function getCached<T>(key: string): T | undefined {
   return entry.value;
 }
 
+export function getStaleCached<T>(key: string): T | undefined {
+  const entry = store.get(key) as CacheEntry<T> | undefined;
+  if (!entry) return undefined;
+  if (entry.expiresAt <= Date.now()) {
+    store.delete(key);
+    return undefined;
+  }
+  return entry.value;
+}
+
 export function setCached<T>(key: string, value: T, ttlMs: number): void {
-  store.set(key, { value, expiresAt: Date.now() + ttlMs });
+  store.set(key, { value, staleAt: Date.now() + ttlMs, expiresAt: Date.now() + ttlMs * 2 });
   evictIfNeeded();
+}
+
+export async function staleWhileRevalidate<T>(
+  key: string,
+  ttlMs: number,
+  producer: () => Promise<T>
+): Promise<T> {
+  const entry = store.get(key) as CacheEntry<T> | undefined;
+  const now = Date.now();
+  if (entry && entry.expiresAt > now) {
+    if (entry.staleAt <= now && !inflight.has(key)) {
+      const refresh = producer()
+        .then((value) => { setCached(key, value, ttlMs); return value; })
+        .finally(() => inflight.delete(key));
+      inflight.set(key, refresh);
+      void refresh.catch(() => undefined);
+    }
+    return entry.value;
+  }
+  return cached(key, ttlMs, producer);
+}
+
+export function cacheStats(): { entries: number; inflight: number } {
+  return { entries: store.size, inflight: inflight.size };
 }
 
 /**
