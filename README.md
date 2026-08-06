@@ -195,8 +195,6 @@ Open `http://localhost:7000` for the landing page and `http://localhost:7000/con
 
 No environment variables are required — the TMDB key (optional) is entered per-user in the configurator and encoded into the manifest link.
 
-`vercel.json` configures the serverless function with `maxDuration: 60` and `memory: 1024`. On the **Hobby** plan the execution window is capped lower (~10 s); switch to **Pro** if your provider playlist is very large or you expect sustained traffic.
-
 ---
 
 ## Installing in Stremio & Nuvio
@@ -211,30 +209,7 @@ No environment variables are required — the TMDB key (optional) is entered per
 - **TTLs:** categories 30 min · streams 10 min · playlist parse 15 min · TMDB 24 h.
 - **De-duplication:** simultaneous identical requests share a single in-flight promise.
 - **Single-parse M3U:** one playlist download is reused across catalog, meta and stream requests via a provider fingerprint key.
-- **Bounded memory:** the cache evicts expired and oldest entries past both an entry cap and a ~128 MB byte budget, so one huge playlist can't crowd out other users on a shared warm instance.
-
-### Scale — what happens with thousands of users
-
-Vercel routes each deployment to many warm serverless instances, so concurrent load scales horizontally. A few things to know:
-
-- **The cache is per-instance by default.** Every instance keeps its own in-memory cache, so N concurrent instances fetch the provider up to N times before caches warm. Set the two environment variables below and a **shared Redis layer** kicks in automatically: provider fetches then happen once per TTL *across all instances*, with a distributed lock preventing duplicate cold-start fetches. See [Shared cache (Upstash / Vercel KV)](#shared-cache-upstash--vercel-kv).
-- **Concurrency & cold starts.** Hobby accounts have a modest concurrent-execution ceiling (excess requests queue); the first request after a cold start can take a few seconds while the playlist parses. Traffic spikes queue and may time out on Hobby — upgrade the plan for launch-scale audiences.
-- **Direct playback is the load-saver.** Streams are returned as the provider's own URLs and played peer-to-peer — Vercel never proxies or relays video, so bandwidth stays at zero and the 4.5 MB function response limit is never a concern.
-- **Installing thousands of users is one manifest fetch each.** The manifest embeds the user's category rows and genre options, so each install is a single request; catalog pages are cached client-side and with `Cache-Control`.
-
-### Shared cache (Upstash / Vercel KV)
-
-Optional. Add a Redis-backed layer so provider fetches happen **once across all serverless instances** instead of once per warm instance. Zero code changes are required — it activates purely from environment variables and falls back to in-memory when they are missing (or if Redis becomes unreachable):
-
-1. Create a free database at [Upstash](https://console.upstash.com) (or add **Vercel KV** to the deployment — it sets the `KV_REST_API_URL` / `KV_REST_API_TOKEN` variables for you).
-2. Set these variables on the deployment (Upstash names shown; the Vercel KV equivalents are detected automatically):
-
-```
-UPSTASH_REDIS_REST_URL=https://<your-db>.upstash.io
-UPSTASH_REDIS_REST_TOKEN=<your-rest-token>
-```
-
-**Security:** credentials never reach Redis. Before any value is written to the shared layer, Xtream usernames/passwords and any URL userinfo (`scheme://user:pass@…`) are replaced with placeholders, then unmasked on read using the requesting config's own credentials. Cache keys contain only sha1 config fingerprints, never plaintext credentials. If a stream URL's userinfo is unknown to the requesting config, it is stripped rather than stored.
+- **Bounded memory:** the cache evicts expired and oldest entries past a cap so warm instances stay lean.
 
 ---
 
@@ -248,7 +223,6 @@ UPSTASH_REDIS_REST_TOKEN=<your-rest-token>
 
 ## Roadmap
 
-- ✅ Per-category board rows — every IPTV category is its own catalog row (and a genre option) for movies, series and live TV.
 - EPG / TV guide support for live channels.
 - Series episode drill-down via Xtream `get_series_info`.
 - Optional per-quality stream splitting in the matcher.

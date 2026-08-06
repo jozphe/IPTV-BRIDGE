@@ -1,10 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
-import { decodeConfig, validateConfig } from './utils/config';
-import { UserConfig } from './types';
+import { decodeConfig } from './utils/config';
 import { getManifest, handleCatalog, handleMeta, handleStream } from './addon';
-import { warmProviderCache } from './iptv/provider';
 import { handleTestConnection } from './api/testConnection';
 import { cacheStats } from './utils/cache';
 import { rateLimit, securityHeaders } from './utils/security';
@@ -17,6 +15,13 @@ app.disable('x-powered-by');
 app.use(securityHeaders);
 app.use(cors({ origin: '*', methods: ['GET', 'POST', 'OPTIONS'], allowedHeaders: ['Content-Type'] }));
 app.use(express.json({ limit: '32kb', strict: true }));
+app.use(express.static(path.join(__dirname, '../public'), {
+  maxAge: '7d',
+  immutable: false,
+  setHeaders(res, filePath) {
+    if (/\.(png|svg|css|js)$/i.test(filePath)) res.setHeader('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
+  }
+}));
 
 app.use((req, res, next) => {
   const started = Date.now();
@@ -50,30 +55,7 @@ app.get('/docs', (req, res) => {
 
 app.get('/health', (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
-  res.json({ ok: true, uptime: Math.round(process.uptime()), cache: cacheStats(), version: '1.6.0' });
-});
-
-// Real-time IPTV Connection Test API
-app.post('/api/test-connection', rateLimit(12, 60_000), handleTestConnection);
-
-// Cache warm-up: the configurator fires this (async, from the browser) after a
-// successful connection test / link generation, and the manifest route also
-// triggers it — so the FIRST user hits a warm cache instead of a slow cold
-// fetch. Best effort: failures never surface to the caller.
-app.post('/warmup', rateLimit(30, 60_000), async (req, res) => {
-  try {
-    const config = req.body as UserConfig;
-    const error = validateConfig(config);
-    if (error) {
-      res.status(400).json({ warming: false, error });
-      return;
-    }
-    await warmProviderCache(config);
-    res.json({ warming: true });
-  } catch (err) {
-    console.error('Warm-up error:', err);
-    res.status(502).json({ warming: false });
-  }
+  res.json({ ok: true, uptime: Math.round(process.uptime()), cache: cacheStats(), version: '1.0.1' });
 });
 
 // Stremio/Nuvio append `/configure` to the addon's base URL. For a configured
@@ -83,47 +65,25 @@ app.get('/:config/configure', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/configure.html'));
 });
 
-// Manifest routes. Async because the manifest now embeds the user's real IPTV
-// categories (cached) as genre options + per-category catalogs.
-async function sendManifest(res: express.Response, config: UserConfig, baseUrl: string) {
-  res.setHeader('Cache-Control', 'private, max-age=300, stale-while-revalidate=3600');
-  try {
-    res.json(await getManifest(config, baseUrl));
-    // Every manifest load is a chance to warm the full provider cache (streams
-    // + categories), so the catalogs that follow load instantly. Fire and
-    // forget — the manifest response is already sent.
-    if (config.type && (config.m3uUrl || (config.host && config.username && config.password))) {
-      void warmProviderCache(config).catch(() => undefined);
-    }
-  } catch (err) {
-    console.error('Manifest Error:', err);
-    res.status(500).json({ error: 'Failed to build manifest' });
-  }
-}
+// Real-time IPTV Connection Test API
+app.post('/api/test-connection', rateLimit(12, 60_000), handleTestConnection);
 
+// Manifest routes
 app.get('/manifest.json', (req, res) => {
-  sendManifest(res, decodeConfig(''), getBaseUrl(req));
+  const config = decodeConfig('');
+  res.json(getManifest(config, getBaseUrl(req)));
 });
 
 // Public ownership-validation manifest for stremio-addons.net.
 app.get('/demo-manifest.json', (req, res) => {
-  sendManifest(res, decodeConfig(''), getBaseUrl(req));
+  res.setHeader('Cache-Control', 'public, max-age=300');
+  res.json(getManifest(decodeConfig(''), getBaseUrl(req)));
 });
 
 app.get('/:config/manifest.json', (req, res) => {
-  sendManifest(res, decodeConfig(req.params.config), getBaseUrl(req));
+  const config = decodeConfig(req.params.config);
+  res.json(getManifest(config, getBaseUrl(req)));
 });
-
-// Static assets are served AFTER the manifest routes so a bare `/manifest.json`
-// request hits the dynamic handler (correct logo + version) instead of the
-// static placeholder in public/.
-app.use(express.static(path.join(__dirname, '../public'), {
-  maxAge: '7d',
-  immutable: false,
-  setHeaders(res, filePath) {
-    if (/\.(png|svg|css|js)$/i.test(filePath)) res.setHeader('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
-  }
-}));
 
 // Catalog routes
 app.get('/catalog/:type/:id.json', handleCatalog);

@@ -13,27 +13,6 @@ const matcher_1 = require("./tmdb/matcher");
 const cleaner_1 = require("./iptv/cleaner");
 const itemId_1 = require("./utils/itemId");
 const cache_1 = require("./utils/cache");
-// Cap per-media-type category rows so the manifest stays lean even for
-// providers with thousands of groups. The full category list is still exposed
-// as genre options on the main catalog (Discover dropdown).
-const MAX_CATEGORY_ROWS = 500;
-function withTimeout(promise, ms, fallback) {
-    return Promise.race([promise, new Promise((resolve) => setTimeout(() => resolve(fallback), ms))]);
-}
-async function loadManifestCategories(config) {
-    try {
-        // Use the FULL category list (no selection): the genre dropdown and
-        // per-category rows must always list every provider group, even when the
-        // config carries a partial/stale `includedCategories` selection.
-        // Never let a slow/down provider delay the manifest past ~6s. The provider
-        // fetch itself keeps caching in the background, so a later refresh shows rows.
-        return await withTimeout((0, provider_1.getAllCategories)(config), 6000, []);
-    }
-    catch (err) {
-        console.error('Manifest categories error:', err);
-        return [];
-    }
-}
 function stremioTypeToKind(type) {
     if (type === 'tv')
         return 'channel';
@@ -46,81 +25,38 @@ function getPublicLogo(req) {
     const host = req.headers['x-forwarded-host'] || req.get('host') || '';
     return `${proto}://${host}/logo.png`;
 }
-async function getManifest(config, baseUrl) {
-    // Pull the user's real IPTV categories (cached) so every category becomes
-    // both a genre option AND its own board row: movies first, then series,
-    // then live TV. `includedCategories` from the configurator is respected, so
-    // deselected groups never appear.
-    const categories = await loadManifestCategories(config);
+function getManifest(config, baseUrl) {
     const catalogs = [];
-    const groups = [
-        { type: 'movie', kind: 'movie', id: 'iptv_movies', name: 'IPTV Movies', shelfId: 'movies', shelfName: 'Movies', include: config.includeMovies !== false },
-        { type: 'series', kind: 'series', id: 'iptv_series', name: 'IPTV Series', shelfId: 'series', shelfName: 'Series', include: config.includeSeries !== false },
-        { type: 'tv', kind: 'live', id: 'iptv_live', name: 'IPTV Live Channels', shelfId: 'live_tv', shelfName: 'Live TV', include: config.includeLive !== false }
-    ];
-    for (const group of groups) {
-        if (!group.include)
-            continue;
-        const typeCategories = categories.filter((cat) => cat.type === group.kind);
-        // Genre options are the readable category NAMES (clients display these
-        // strings verbatim — ids like `vod_45` previously showed up as garbage).
-        // Deduplicated case-insensitively in case two groups share a display name
-        // (e.g. "Action" and "action"), and empty names are skipped.
-        const seen = new Set();
-        const genreOptions = [];
-        for (const cat of typeCategories) {
-            const name = (cat.name || '').trim();
-            if (!name)
-                continue;
-            const key = name.toLowerCase();
-            if (seen.has(key))
-                continue;
-            seen.add(key);
-            genreOptions.push(name);
-        }
-        // Row 1 — plain shelf ("Movies" / "Series" / "Live TV"): every item of
-        // the type with the category dropdown. Shown first so the board opens on
-        // familiar names; the IPTV-branded row follows. Genre options are the full
-        // provider category list (clients display these strings verbatim).
+    if (config.includeLive !== false) {
         catalogs.push({
-            type: group.type,
-            id: group.shelfId,
-            name: group.shelfName,
-            extra: [
-                { name: 'search', isRequired: false },
-                { name: 'genre', isRequired: false, options: genreOptions },
-                { name: 'skip', isRequired: false }
-            ]
+            type: 'tv',
+            id: 'iptv_live',
+            name: 'IPTV Live Channels',
+            extra: [{ name: 'search', isRequired: false }, { name: 'genre', isRequired: false }, { name: 'skip', isRequired: false }]
         });
-        // Row 2 — main catalog grouping ALL movie/series/live folders together,
-        // with the full category list as genre options.
+    }
+    if (config.includeMovies !== false) {
         catalogs.push({
-            type: group.type,
-            id: group.id,
-            name: group.name,
-            extra: [
-                { name: 'search', isRequired: false },
-                { name: 'genre', isRequired: false, options: genreOptions },
-                { name: 'skip', isRequired: false }
-            ]
+            type: 'movie',
+            id: 'iptv_movies',
+            name: 'IPTV Movies',
+            extra: [{ name: 'search', isRequired: false }, { name: 'genre', isRequired: false }, { name: 'skip', isRequired: false }]
         });
-        // Row 3+ — one dedicated catalog (board row) per category,
-        // e.g. `IPTV Movies: Action`.
-        for (const cat of typeCategories.slice(0, MAX_CATEGORY_ROWS)) {
-            catalogs.push({
-                type: group.type,
-                id: `iptv_${group.kind}_cat_${cat.id}`,
-                name: `${group.name}: ${cat.name}`,
-                extra: [{ name: 'search', isRequired: false }, { name: 'skip', isRequired: false }]
-            });
-        }
+    }
+    if (config.includeSeries !== false) {
+        catalogs.push({
+            type: 'series',
+            id: 'iptv_series',
+            name: 'IPTV Series',
+            extra: [{ name: 'search', isRequired: false }, { name: 'genre', isRequired: false }, { name: 'skip', isRequired: false }]
+        });
     }
     // Use the bundled raster logo from public/logo.png. Stremio/Nuvio clients
     // reliably render this PNG, unlike the previous external placeholder.
     const logo = `${baseUrl || ''}/logo.png`;
     return {
         id: 'org.iptv.bridge',
-        version: '1.6.0',
+        version: '1.0.1',
         name: 'IPTV Bridge',
         description: 'Serverless Xtream & M3U IPTV Addon with TMDB Resolution, Global Search & Clean Categorization',
         logo,
@@ -145,34 +81,6 @@ async function getManifest(config, baseUrl) {
     };
 }
 /* ----------------------------- CATALOG ----------------------------- */
-/** Extract the category key from a per-category catalog id (`iptv_movie_cat_…`). */
-function categoryFromCatalogId(catalogId) {
-    const match = catalogId.match(/^iptv_(?:movie|series|live)_cat_(.+)$/);
-    return match ? match[1] : undefined;
-}
-/**
- * Keep only items whose category matches the requested key. The key is a
- * per-category catalog id suffix (Xtream `vod_45` / `live_5`, M3U name-slug)
- * or a genre option value (category NAME). Items are the ground truth — they
- * carry both the category name and the prefixed id — so this is a single
- * in-memory pass with NO extra provider fetch (fast on warm + cold caches).
- */
-function filterItemsByCategory(items, categoryKey) {
-    const key = (categoryKey || '').trim();
-    if (!key)
-        return items;
-    const slug = (0, cleaner_1.categorySlug)(key);
-    const lower = key.toLowerCase();
-    return items.filter((item) => {
-        const name = (item.category || '').trim();
-        const id = item.categoryId !== undefined && item.categoryId !== null ? String(item.categoryId) : '';
-        return (name.toLowerCase() === lower ||
-            (0, cleaner_1.categorySlug)(name) === slug ||
-            id === key ||
-            id.toLowerCase() === lower ||
-            (0, cleaner_1.categorySlug)(id) === slug);
-    });
-}
 async function handleCatalog(req, res) {
     try {
         const config = (0, config_1.decodeConfig)(req.params.config || '');
@@ -182,33 +90,19 @@ async function handleCatalog(req, res) {
         }
         res.setHeader('Cache-Control', 'private, max-age=120, stale-while-revalidate=300');
         const fallbackPoster = getPublicLogo(req);
-        const { type, id, extra } = req.params;
+        const { type, extra } = req.params;
         let searchQuery = '';
-        let genreValue = '';
         let skip = 0;
         if (extra) {
             const s = extra.match(/search=([^&/]+)/);
             if (s)
                 searchQuery = decodeURIComponent(s[1]);
-            const g = extra.match(/genre=([^&/]+)/);
-            if (g)
-                genreValue = decodeURIComponent(g[1]);
             const sk = extra.match(/skip=(\d+)/);
             if (sk)
                 skip = parseInt(sk[1], 10);
         }
         const kind = stremioTypeToKind(type);
         let items = await (0, provider_1.getItems)(config, kind);
-        // Per-category catalogs (`iptv_movie_cat_<catId>` …) filter by their own
-        // category; the main catalogs filter by the `genre=` extra option. Both
-        // match items directly — no second provider fetch.
-        const categoryKey = categoryFromCatalogId(id || '');
-        if (categoryKey) {
-            items = filterItemsByCategory(items, categoryKey);
-        }
-        else if (genreValue) {
-            items = filterItemsByCategory(items, genreValue);
-        }
         if (searchQuery) {
             const q = searchQuery.toLowerCase();
             items = items.filter((i) => i.title.toLowerCase().includes(q) || i.cleanTitle.toLowerCase().includes(q));
@@ -269,7 +163,7 @@ async function handleMeta(req, res) {
                     // account does not actually carry.
                     if (ref.k === 'series' && config.type === 'xtream' && ref.sid !== undefined) {
                         const client = new xtream_1.XtreamClient(config.host, config.username, config.password);
-                        const providerEpisodes = await (0, cache_1.cached)(`xt:all-episodes:${ref.sid}`, cache_1.TTL.STREAMS, () => client.listAllEpisodes(ref.sid), { secrets: (0, cache_1.secretsFromConfig)(config) });
+                        const providerEpisodes = await (0, cache_1.cached)(`xt:all-episodes:${ref.sid}`, cache_1.TTL.STREAMS, () => client.listAllEpisodes(ref.sid));
                         base.videos = providerEpisodes.map((ep) => ({
                             id: `${id}:${ep.season}:${ep.episode}`,
                             title: ep.title,
@@ -378,7 +272,7 @@ async function resolveOwnItemStreams(config, id) {
     // Series: resolve episode via Xtream get_series_info
     if (config.type === 'xtream' && ref.sid !== undefined && season !== undefined && episode !== undefined) {
         const client = new xtream_1.XtreamClient(config.host, config.username, config.password);
-        const eps = await (0, cache_1.cached)(`xt:ep:${ref.sid}:${season}:${episode}`, cache_1.TTL.STREAMS, () => client.getEpisodeStreams(ref.sid, season, episode), { secrets: (0, cache_1.secretsFromConfig)(config) });
+        const eps = await (0, cache_1.cached)(`xt:ep:${ref.sid}:${season}:${episode}`, cache_1.TTL.STREAMS, () => client.getEpisodeStreams(ref.sid, season, episode));
         return eps.map((e) => ({
             name: `🎬 IPTV${e.quality ? ' ' + e.quality : ''}`,
             title: e.title,
@@ -479,7 +373,7 @@ async function resolveGlobalStreams(config, id, type) {
         for (const m of matches.slice(0, 3)) {
             if (m.item.streamId === undefined)
                 continue;
-            const eps = await (0, cache_1.cached)(`xt:ep:${m.item.streamId}:${season}:${episode}`, cache_1.TTL.STREAMS, () => client.getEpisodeStreams(m.item.streamId, season, episode), { secrets: (0, cache_1.secretsFromConfig)(config) });
+            const eps = await (0, cache_1.cached)(`xt:ep:${m.item.streamId}:${season}:${episode}`, cache_1.TTL.STREAMS, () => client.getEpisodeStreams(m.item.streamId, season, episode));
             for (const e of eps) {
                 out.push({
                     name: `🎬 IPTV${e.quality ? ' ' + e.quality : ''}`,

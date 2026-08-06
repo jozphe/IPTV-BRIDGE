@@ -53,8 +53,6 @@ export function validateConfig(config: UserConfig): string | null {
   }
   if (config.tmdbApiKey && config.tmdbApiKey.length > 512) return 'TMDB key is too long.';
   if (config.includedCategories && config.includedCategories.length > 2000) return 'Too many categories selected.';
-  const limit = config.categoryLimit ? Number(config.categoryLimit) : 0;
-  if (!Number.isFinite(limit) || limit < 0 || limit > 25) return 'Category limit must be between 0 and 25.';
   return null;
 }
 
@@ -67,10 +65,6 @@ function normalizeConfig(value: any): UserConfig {
   };
   if (Array.isArray(value.includedCategories)) {
     config.includedCategories = value.includedCategories.map(String).filter(Boolean);
-  }
-  if (value.categoryLimit !== undefined) {
-    const n = Number(value.categoryLimit);
-    config.categoryLimit = Number.isFinite(n) ? Math.max(0, Math.min(25, Math.floor(n))) : 0;
   }
   return config;
 }

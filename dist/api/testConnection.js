@@ -6,7 +6,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleTestConnection = handleTestConnection;
 const xtream_1 = require("../iptv/xtream");
 const m3u_1 = require("../iptv/m3u");
-const provider_1 = require("../iptv/provider");
 const axios_1 = __importDefault(require("axios"));
 const config_1 = require("../utils/config");
 async function handleTestConnection(req, res) {
@@ -45,9 +44,6 @@ async function handleTestConnection(req, res) {
             categories = loadedCategories;
             const userInfo = authData?.user_info;
             statusMessage = `Connected! User: ${userInfo?.username || username} (Status: ${userInfo?.status || 'Active'})`;
-            // Warm the shared cache (streams) in the background so the first
-            // Stremio/Nuvio user hits a warm cache instead of a slow cold fetch.
-            void (0, provider_1.warmProviderCache)({ type: 'xtream', host, username, password }).catch(() => undefined);
             res.json({
                 success: true,
                 message: statusMessage,
@@ -68,10 +64,6 @@ async function handleTestConnection(req, res) {
                 return;
             }
             const parsed = await (0, m3u_1.parseM3UPlaylist)(m3uUrl);
-            // NOTE: no warm-up here — the playlist was JUST parsed by this test, and
-            // the configurator's "Generate link" fires /warmup (which caches under
-            // the addon's fingerprint) right after. Skipping avoids a second full
-            // download+parse of large playlists at configure time.
             res.json({
                 success: true,
                 message: `M3U Playlist parsed successfully! Found ${parsed.items.length} items across ${parsed.categories.length} categories.`,
