@@ -1,5 +1,4 @@
 {
-  "$comment": "Proxy-only Vercel project. This keeps the legacy iptvbridge.vercel.app domain (already installed by thousands of users) working by CDN-rewriting every request to the Cloudflare Worker. No serverless function is invoked. Replace <ACCOUNT-SUBDOMAIN> with your Cloudflare account's workers.dev subdomain (the Worker is named 'iptvbridge'), or with a custom domain bound to the Worker.",
   "rewrites": [
     { "source": "/:path*", "destination": "https://iptvbridge.joeishere.workers.dev/:path*" }
   ]
