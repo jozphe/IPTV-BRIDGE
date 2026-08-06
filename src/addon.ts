@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { decodeConfig, validateConfig } from './utils/config';
 import { isSafeProtocolId } from './utils/security';
 import { UserConfig, StremioManifest, StremioCatalog, StremioStream, StremioMeta, IPTVItem, IPTVCategory } from './types';
-import { getItems, getCategories, getTitleMatches, MediaKind } from './iptv/provider';
+import { getItems, getAllCategories, getTitleMatches, MediaKind } from './iptv/provider';
 import { XtreamClient } from './iptv/xtream';
 import { TMDBClient } from './tmdb/tmdb';
 import { rankMatches, itemsToStreams } from './tmdb/matcher';
@@ -21,9 +21,12 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
 
 async function loadManifestCategories(config: UserConfig): Promise<IPTVCategory[]> {
   try {
+    // Use the FULL category list (no selection): the genre dropdown and
+    // per-category rows must always list every provider group, even when the
+    // config carries a partial/stale `includedCategories` selection.
     // Never let a slow/down provider delay the manifest past ~6s. The provider
     // fetch itself keeps caching in the background, so a later refresh shows rows.
-    return await withTimeout(getCategories(config), 6000, []);
+    return await withTimeout(getAllCategories(config), 6000, []);
   } catch (err) {
     console.error('Manifest categories error:', err);
     return [];
@@ -85,12 +88,12 @@ export async function getManifest(config: UserConfig, baseUrl?: string): Promise
 
     // Row 1 — plain shelf ("Movies" / "Series" / "Live TV"): every item of
     // the type with the category dropdown. Shown first so the board opens on
-    // familiar names; the IPTV-branded row follows.
+    // familiar names; the IPTV-branded row follows. Genre options are the full
+    // provider category list (clients display these strings verbatim).
     catalogs.push({
       type: group.type,
       id: group.shelfId,
       name: group.shelfName,
-      genres: genreOptions,
       extra: [
         { name: 'search', isRequired: false },
         { name: 'genre', isRequired: false, options: genreOptions },
@@ -99,12 +102,11 @@ export async function getManifest(config: UserConfig, baseUrl?: string): Promise
     });
 
     // Row 2 — main catalog grouping ALL movie/series/live folders together,
-    // with the full category list as genres.
+    // with the full category list as genre options.
     catalogs.push({
       type: group.type,
       id: group.id,
       name: group.name,
-      genres: genreOptions,
       extra: [
         { name: 'search', isRequired: false },
         { name: 'genre', isRequired: false, options: genreOptions },
@@ -130,7 +132,7 @@ export async function getManifest(config: UserConfig, baseUrl?: string): Promise
 
   return {
     id: 'org.iptv.bridge',
-    version: '1.3.0',
+    version: '1.5.0',
     name: 'IPTV Bridge',
     description: 'Serverless Xtream & M3U IPTV Addon with TMDB Resolution, Global Search & Clean Categorization',
     logo,
@@ -165,40 +167,26 @@ function categoryFromCatalogId(catalogId: string): string | undefined {
 
 /**
  * Keep only items whose category matches the requested key. The key is a
- * category id (Xtream `live_5` / `vod_45`, M3U name-slug) or a genre option
- * value; we resolve it to the canonical category NAME via the cached category
- * list, falling back to slug comparison if categories are unavailable.
+ * per-category catalog id suffix (Xtream `vod_45` / `live_5`, M3U name-slug)
+ * or a genre option value (category NAME). Items are the ground truth — they
+ * carry both the category name and the prefixed id — so this is a single
+ * in-memory pass with NO extra provider fetch (fast on warm + cold caches).
  */
-async function filterItemsByCategory(
-  config: UserConfig,
-  items: IPTVItem[],
-  categoryKey: string
-): Promise<IPTVItem[]> {
-  const slug = categorySlug(categoryKey);
-  const names = new Set<string>();
-  try {
-    for (const cat of await getCategories(config)) {
-      if (cat.id === categoryKey || cat.name === categoryKey || categorySlug(cat.name) === slug) {
-        names.add(cat.name);
-      }
-    }
-  } catch (err) {
-    console.error('Category filter error:', err);
-  }
-  if (!names.size) {
-    return items.filter((item) => categorySlug(item.category) === slug);
-  }
-  // Compare case-insensitively (and via slug) so a provider that stores the
-  // category name in different case on items vs categories still matches.
-  const lower = new Set<string>();
-  const nameSlugs = new Set<string>();
-  for (const name of names) {
-    lower.add(name.toLowerCase());
-    nameSlugs.add(categorySlug(name));
-  }
+function filterItemsByCategory(items: IPTVItem[], categoryKey: string): IPTVItem[] {
+  const key = (categoryKey || '').trim();
+  if (!key) return items;
+  const slug = categorySlug(key);
+  const lower = key.toLowerCase();
   return items.filter((item) => {
-    const c = item.category || '';
-    return lower.has(c.toLowerCase()) || nameSlugs.has(categorySlug(c));
+    const name = (item.category || '').trim();
+    const id = item.categoryId !== undefined && item.categoryId !== null ? String(item.categoryId) : '';
+    return (
+      name.toLowerCase() === lower ||
+      categorySlug(name) === slug ||
+      id === key ||
+      id.toLowerCase() === lower ||
+      categorySlug(id) === slug
+    );
   });
 }
 
@@ -226,12 +214,13 @@ export async function handleCatalog(req: Request, res: Response) {
     let items = await getItems(config, kind);
 
     // Per-category catalogs (`iptv_movie_cat_<catId>` …) filter by their own
-    // category; the main catalogs filter by the `genre=` extra option.
+    // category; the main catalogs filter by the `genre=` extra option. Both
+    // match items directly — no second provider fetch.
     const categoryKey = categoryFromCatalogId(id || '');
     if (categoryKey) {
-      items = await filterItemsByCategory(config, items, categoryKey);
+      items = filterItemsByCategory(items, categoryKey);
     } else if (genreValue) {
-      items = await filterItemsByCategory(config, items, genreValue);
+      items = filterItemsByCategory(items, genreValue);
     }
 
     if (searchQuery) {

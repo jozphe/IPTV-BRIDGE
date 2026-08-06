@@ -8,6 +8,7 @@ const cors_1 = __importDefault(require("cors"));
 const path_1 = __importDefault(require("path"));
 const config_1 = require("./utils/config");
 const addon_1 = require("./addon");
+const provider_1 = require("./iptv/provider");
 const testConnection_1 = require("./api/testConnection");
 const cache_1 = require("./utils/cache");
 const security_1 = require("./utils/security");
@@ -45,7 +46,29 @@ app.get('/docs', (req, res) => {
 });
 app.get('/health', (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
-    res.json({ ok: true, uptime: Math.round(process.uptime()), cache: (0, cache_1.cacheStats)(), version: '1.1.0' });
+    res.json({ ok: true, uptime: Math.round(process.uptime()), cache: (0, cache_1.cacheStats)(), version: '1.5.0' });
+});
+// Real-time IPTV Connection Test API
+app.post('/api/test-connection', (0, security_1.rateLimit)(12, 60_000), testConnection_1.handleTestConnection);
+// Cache warm-up: the configurator fires this (async, from the browser) after a
+// successful connection test / link generation, and the manifest route also
+// triggers it — so the FIRST user hits a warm cache instead of a slow cold
+// fetch. Best effort: failures never surface to the caller.
+app.post('/warmup', (0, security_1.rateLimit)(30, 60_000), async (req, res) => {
+    try {
+        const config = req.body;
+        const error = (0, config_1.validateConfig)(config);
+        if (error) {
+            res.status(400).json({ warming: false, error });
+            return;
+        }
+        await (0, provider_1.warmProviderCache)(config);
+        res.json({ warming: true });
+    }
+    catch (err) {
+        console.error('Warm-up error:', err);
+        res.status(502).json({ warming: false });
+    }
 });
 // Stremio/Nuvio append `/configure` to the addon's base URL. For a configured
 // install that base URL already contains the encoded config, so the request is
@@ -53,14 +76,18 @@ app.get('/health', (req, res) => {
 app.get('/:config/configure', (req, res) => {
     res.sendFile(path_1.default.join(__dirname, '../public/configure.html'));
 });
-// Real-time IPTV Connection Test API
-app.post('/api/test-connection', (0, security_1.rateLimit)(12, 60_000), testConnection_1.handleTestConnection);
 // Manifest routes. Async because the manifest now embeds the user's real IPTV
 // categories (cached) as genre options + per-category catalogs.
 async function sendManifest(res, config, baseUrl) {
     res.setHeader('Cache-Control', 'private, max-age=300, stale-while-revalidate=3600');
     try {
         res.json(await (0, addon_1.getManifest)(config, baseUrl));
+        // Every manifest load is a chance to warm the full provider cache (streams
+        // + categories), so the catalogs that follow load instantly. Fire and
+        // forget — the manifest response is already sent.
+        if (config.type && (config.m3uUrl || (config.host && config.username && config.password))) {
+            void (0, provider_1.warmProviderCache)(config).catch(() => undefined);
+        }
     }
     catch (err) {
         console.error('Manifest Error:', err);

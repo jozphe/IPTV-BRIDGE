@@ -101,7 +101,10 @@ function getStaleCached(key) {
 function setCached(key, value, ttlMs) {
     removeEntry(key);
     const bytes = approxBytes(value);
-    store.set(key, { value, bytes, staleAt: Date.now() + ttlMs, expiresAt: Date.now() + ttlMs * 2 });
+    // expiresAt extends well past staleAt: staleWhileRevalidate serves this
+    // value for a long time after it goes stale while refreshing in the
+    // background, so a slow provider never blocks a warm request.
+    store.set(key, { value, bytes, staleAt: Date.now() + ttlMs, expiresAt: Date.now() + ttlMs * 4 });
     totalBytes += bytes;
     evictIfNeeded();
 }
@@ -425,8 +428,11 @@ function cacheStats() {
     return { entries: store.size, inflight: inflight.size, approxMb: Math.round(totalBytes / 1024 / 1024), redis: redisStatus };
 }
 exports.TTL = {
-    CATEGORIES: 30 * 60 * 1000, // 30 minutes
-    STREAMS: 10 * 60 * 1000, // 10 minutes
+    // Long TTLs + stale-while-revalidate: the provider is only ever fetched
+    // once per window, and stale data is served instantly while the refresh
+    // happens in the background.
+    CATEGORIES: 60 * 60 * 1000, // 1 hour
+    STREAMS: 30 * 60 * 1000, // 30 minutes
     TMDB: 24 * 60 * 60 * 1000, // 24 hours
-    PLAYLIST: 15 * 60 * 1000 // 15 minutes
+    PLAYLIST: 60 * 60 * 1000 // 1 hour
 };
