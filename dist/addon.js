@@ -14,9 +14,9 @@ const cleaner_1 = require("./iptv/cleaner");
 const itemId_1 = require("./utils/itemId");
 const cache_1 = require("./utils/cache");
 // Cap per-media-type category rows so the manifest stays lean even for
-// providers with hundreds of groups. The full category list is still exposed
+// providers with thousands of groups. The full category list is still exposed
 // as genre options on the main catalog (Discover dropdown).
-const MAX_CATEGORY_ROWS = 200;
+const MAX_CATEGORY_ROWS = 500;
 function withTimeout(promise, ms, fallback) {
     return Promise.race([promise, new Promise((resolve) => setTimeout(() => resolve(fallback), ms))]);
 }
@@ -51,26 +51,59 @@ async function getManifest(config, baseUrl) {
     const categories = await loadManifestCategories(config);
     const catalogs = [];
     const groups = [
-        { type: 'movie', kind: 'movie', id: 'iptv_movies', name: 'IPTV Movies', include: config.includeMovies !== false },
-        { type: 'series', kind: 'series', id: 'iptv_series', name: 'IPTV Series', include: config.includeSeries !== false },
-        { type: 'tv', kind: 'live', id: 'iptv_live', name: 'IPTV Live Channels', include: config.includeLive !== false }
+        { type: 'movie', kind: 'movie', id: 'iptv_movies', name: 'IPTV Movies', shelfId: 'movies', shelfName: 'Movies', include: config.includeMovies !== false },
+        { type: 'series', kind: 'series', id: 'iptv_series', name: 'IPTV Series', shelfId: 'series', shelfName: 'Series', include: config.includeSeries !== false },
+        { type: 'tv', kind: 'live', id: 'iptv_live', name: 'IPTV Live Channels', shelfId: 'live_tv', shelfName: 'Live TV', include: config.includeLive !== false }
     ];
     for (const group of groups) {
         if (!group.include)
             continue;
         const typeCategories = categories.filter((cat) => cat.type === group.kind);
-        // Main catalog (all items of the type) + the full category list as genres.
+        // Genre options are the readable category NAMES (clients display these
+        // strings verbatim — ids like `vod_45` previously showed up as garbage).
+        // Deduplicated case-insensitively in case two groups share a display name
+        // (e.g. "Action" and "action"), and empty names are skipped.
+        const seen = new Set();
+        const genreOptions = [];
+        for (const cat of typeCategories) {
+            const name = (cat.name || '').trim();
+            if (!name)
+                continue;
+            const key = name.toLowerCase();
+            if (seen.has(key))
+                continue;
+            seen.add(key);
+            genreOptions.push(name);
+        }
+        // Row 1 — plain shelf ("Movies" / "Series" / "Live TV"): every item of
+        // the type with the category dropdown. Shown first so the board opens on
+        // familiar names; the IPTV-branded row follows.
+        catalogs.push({
+            type: group.type,
+            id: group.shelfId,
+            name: group.shelfName,
+            genres: genreOptions,
+            extra: [
+                { name: 'search', isRequired: false },
+                { name: 'genre', isRequired: false, options: genreOptions },
+                { name: 'skip', isRequired: false }
+            ]
+        });
+        // Row 2 — main catalog grouping ALL movie/series/live folders together,
+        // with the full category list as genres.
         catalogs.push({
             type: group.type,
             id: group.id,
             name: group.name,
+            genres: genreOptions,
             extra: [
                 { name: 'search', isRequired: false },
-                { name: 'genre', isRequired: false, options: typeCategories.map((cat) => cat.id) },
+                { name: 'genre', isRequired: false, options: genreOptions },
                 { name: 'skip', isRequired: false }
             ]
         });
-        // One dedicated catalog (board row) per category, e.g. `IPTV Movies: Action`.
+        // Row 3+ — one dedicated catalog (board row) per category,
+        // e.g. `IPTV Movies: Action`.
         for (const cat of typeCategories.slice(0, MAX_CATEGORY_ROWS)) {
             catalogs.push({
                 type: group.type,
@@ -85,7 +118,7 @@ async function getManifest(config, baseUrl) {
     const logo = `${baseUrl || ''}/logo.png`;
     return {
         id: 'org.iptv.bridge',
-        version: '1.1.0',
+        version: '1.3.0',
         name: 'IPTV Bridge',
         description: 'Serverless Xtream & M3U IPTV Addon with TMDB Resolution, Global Search & Clean Categorization',
         logo,
@@ -134,7 +167,21 @@ async function filterItemsByCategory(config, items, categoryKey) {
     catch (err) {
         console.error('Category filter error:', err);
     }
-    return items.filter((item) => names.size ? names.has(item.category) : (0, cleaner_1.categorySlug)(item.category) === slug);
+    if (!names.size) {
+        return items.filter((item) => (0, cleaner_1.categorySlug)(item.category) === slug);
+    }
+    // Compare case-insensitively (and via slug) so a provider that stores the
+    // category name in different case on items vs categories still matches.
+    const lower = new Set();
+    const nameSlugs = new Set();
+    for (const name of names) {
+        lower.add(name.toLowerCase());
+        nameSlugs.add((0, cleaner_1.categorySlug)(name));
+    }
+    return items.filter((item) => {
+        const c = item.category || '';
+        return lower.has(c.toLowerCase()) || nameSlugs.has((0, cleaner_1.categorySlug)(c));
+    });
 }
 async function handleCatalog(req, res) {
     try {

@@ -39,48 +39,103 @@ function configFingerprint(config) {
  * Xtream fetches only the relevant type; M3U parses once and is reused across
  * all kinds via a single cached parse.
  */
-async function getItems(config, kind) {
+/**
+ * Apply the configurator's category selection to a full item/category list.
+ * If the selection matches NOTHING (e.g. the playlist was replaced or renamed
+ * its groups since the manifest link was created), it is treated as stale and
+ * the full list is returned instead of an empty/trimmed catalog.
+ */
+function applySelection(list, selected, getId, getName) {
+    if (!selected || !list.length)
+        return list;
+    const filtered = list.filter((item) => selected(getId(item), getName(item)));
+    return filtered.length ? filtered : list;
+}
+/**
+ * Fetch the provider's FULL category list (no selection applied, never
+ * trimmed). Used to decide whether a selection is stale provider-wide.
+ */
+async function fetchAllCategories(config) {
     const fp = configFingerprint(config);
     if (config.type === 'xtream' && config.host && config.username && config.password) {
+        return (0, cache_1.staleWhileRevalidate)(`xt:cats:${fp}`, cache_1.TTL.CATEGORIES, async () => {
+            const client = new xtream_1.XtreamClient(config.host, config.username, config.password);
+            return client.getCategories();
+        }, { secrets: (0, cache_1.secretsFromConfig)(config) });
+    }
+    if (config.type === 'm3u' && config.m3uUrl) {
+        const parsed = await fetchParsedM3U(config);
+        return parsed.categories;
+    }
+    return [];
+}
+/** Parse the M3U source once, cached per-provider (shared by items & categories). */
+function fetchParsedM3U(config) {
+    const fp = configFingerprint(config);
+    return (0, cache_1.staleWhileRevalidate)(`m3u:parsed:${fp}`, cache_1.TTL.PLAYLIST, () => (0, m3u_1.parseM3UPlaylist)(config.m3uUrl), { secrets: (0, cache_1.secretsFromConfig)(config) });
+}
+/**
+ * Staleness gate (pure): a selection is "stale" only when it matches NO
+ * category in the provider's full category list (playlist replaced/renamed
+ * since the link was created). Partial matches are respected strictly —
+ * deliberately deselected types must not be flooded back in. An empty
+ * category list can't prove staleness, so it is treated as "not stale"
+ * (strict filtering) rather than guessing.
+ */
+function selectionIsStale(selected, all) {
+    if (!selected || !all.length)
+        return false;
+    return !all.some((cat) => selected(cat.id, cat.name));
+}
+async function getItems(config, kind) {
+    const fp = configFingerprint(config);
+    const selected = buildCategoryMatcher(config);
+    if (config.type === 'xtream' && config.host && config.username && config.password) {
         const xtType = kind === 'channel' ? 'live' : kind;
-        const selected = buildCategoryMatcher(config);
         // The matcher must run AFTER the cached fetch: the cache key only covers
         // credentials, so filtering inside the producer would serve one user's
         // category selection to every other user sharing the same provider.
-        const items = await (0, cache_1.staleWhileRevalidate)(`xt:streams:${fp}:${xtType}`, cache_1.TTL.STREAMS, async () => {
+        // The staleness check needs the full category list; fetch it in parallel
+        // so a cold cache costs max(streams, cats) instead of their sum.
+        const itemsP = (0, cache_1.staleWhileRevalidate)(`xt:streams:${fp}:${xtType}`, cache_1.TTL.STREAMS, async () => {
             const client = new xtream_1.XtreamClient(config.host, config.username, config.password);
             return client.getStreams(xtType);
         }, { secrets: (0, cache_1.secretsFromConfig)(config) });
-        return selected ? items.filter((item) => selected(item.categoryId, item.category)) : items;
+        const catsP = selected
+            ? fetchAllCategories(config).catch((err) => {
+                // Can't judge staleness — fall back to strict filtering.
+                console.error('Category staleness check failed:', err);
+                return [];
+            })
+            : Promise.resolve([]);
+        const [items, allCats] = await Promise.all([itemsP, catsP]);
+        if (!selected)
+            return items;
+        if (selectionIsStale(selected, allCats))
+            return items; // entirely stale selection
+        return items.filter((i) => selected(i.categoryId, i.category)); // strict per-kind
     }
     if (config.type === 'm3u' && config.m3uUrl) {
-        const parsed = await (0, cache_1.staleWhileRevalidate)(`m3u:parsed:${fp}`, cache_1.TTL.PLAYLIST, () => 
         // Parse the complete source once. Category filtering belongs after the
         // parse, otherwise a cache entry created for one selection can poison a
         // later request with a different category selection.
-        (0, m3u_1.parseM3UPlaylist)(config.m3uUrl), { secrets: (0, cache_1.secretsFromConfig)(config) });
-        const selected = buildCategoryMatcher(config);
-        return parsed.items.filter((item) => item.type === kind &&
-            (!selected || selected(item.categoryId, item.category)));
+        const parsed = await fetchParsedM3U(config);
+        const kindItems = parsed.items.filter((item) => item.type === kind);
+        if (!selected)
+            return kindItems;
+        if (selectionIsStale(selected, parsed.categories))
+            return kindItems; // entirely stale selection
+        return kindItems.filter((i) => selected(i.categoryId, i.category)); // strict per-kind
     }
     return [];
 }
 async function getCategories(config) {
-    const fp = configFingerprint(config);
-    if (config.type === 'xtream' && config.host && config.username && config.password) {
-        const selected = buildCategoryMatcher(config);
-        const categories = await (0, cache_1.staleWhileRevalidate)(`xt:cats:${fp}`, cache_1.TTL.CATEGORIES, async () => {
-            const client = new xtream_1.XtreamClient(config.host, config.username, config.password);
-            return client.getCategories();
-        }, { secrets: (0, cache_1.secretsFromConfig)(config) });
-        return selected ? categories.filter((category) => selected(category.id, category.name)) : categories;
-    }
-    if (config.type === 'm3u' && config.m3uUrl) {
-        const parsed = await (0, cache_1.staleWhileRevalidate)(`m3u:parsed:${fp}`, cache_1.TTL.PLAYLIST, () => (0, m3u_1.parseM3UPlaylist)(config.m3uUrl), { secrets: (0, cache_1.secretsFromConfig)(config) });
-        const selected = buildCategoryMatcher(config);
-        return selected ? parsed.categories.filter((category) => selected(category.id, category.name)) : parsed.categories;
-    }
-    return [];
+    const selected = buildCategoryMatcher(config);
+    const all = await fetchAllCategories(config);
+    // The input here is the FULL list, so a zero-match fallback is exactly the
+    // whole-provider staleness case (playlist replaced) — deliberate per-type
+    // deselection can't be misread because the full list has matches elsewhere.
+    return applySelection(all, selected, (c) => c.id, (c) => c.name);
 }
 async function getTitleMatches(config, kind, titles) {
     const fp = configFingerprint(config);
