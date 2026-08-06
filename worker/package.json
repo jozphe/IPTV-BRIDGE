@@ -1,0 +1,32 @@
+{
+  "name": "iptvbridge-worker",
+  "version": "2.0.0",
+  "description": "Cloudflare Worker rewrite of the IPTV Bridge Stremio/Nuvio addon (per-user Xtream/M3U credentials in the manifest URL + edge Cache API).",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "tail": "wrangler tail"
+  },
+  "keywords": [
+    "stremio",
+    "nuvio",
+    "iptv",
+    "xtream",
+    "m3u",
+    "tmdb",
+    "cloudflare",
+    "workers"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "lz-string": "^1.5.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240925.0",
+    "typescript": "^5.7.3",
+    "wrangler": "^3.80.0"
+  }
+}

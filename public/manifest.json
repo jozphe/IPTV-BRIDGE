@@ -1,9 +1,9 @@
 {
   "id": "org.iptv.bridge",
   "version": "1.0.1",
-  "name": "IPTV Bridge (Stremio & Nuvio)",
+  "name": "IPTV Bridge",
   "description": "Serverless Xtream and M3U IPTV addon with VOD movies, live channels, series, TMDB resolution, and exact-title stream matching.",
-  "logo": "https://YOUR-DEPLOYMENT-DOMAIN/logo.png",
+  "logo": "https://iptvbridge.vercel.app/logo.png",
   "resources": [
     {
       "name": "catalog",

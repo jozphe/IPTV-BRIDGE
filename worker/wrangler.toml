@@ -1,0 +1,35 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# IPTV Bridge — Cloudflare Worker (per-user credentials model)
+#
+# Each user brings their OWN Xtream/M3U credentials, compressed into their
+# manifest URL exactly like the original addon:
+#     https://<domain>/<compressed-config>/manifest.json
+#
+# There is NO shared account and NO cron job. Speed comes from the global edge
+# runtime (no cold starts) plus the Cloudflare Cache API:
+#   - each user's provider data is cached per-config at the edge
+#   - TMDB lookups are cached GLOBALLY (shared across all users, key excludes the
+#     api key) so the first request for a title warms it for everyone
+#
+# Cache API has no daily write cap (unlike Workers KV), so this scales to
+# thousands of independent users on the free tier.
+# ─────────────────────────────────────────────────────────────────────────────
+
+name = "iptvbridge"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+
+# Serve the existing branded configurator/landing UI (public/) as static assets.
+# The Worker routes addon + api endpoints first (see src/index.ts) and delegates
+# everything else to this asset binding.
+[assets]
+directory = "../public"
+binding = "ASSETS"
+
+[vars]
+# Optional shared TMDB v3 key used only when a user did not supply their own in
+# the configurator. Leave as-is or override.
+TMDB_FALLBACK_KEY = "116f8e56d337e582db8e9eb6733d5cc5"
+
+# No secrets and no KV namespace are required: provider credentials live in each
+# user's manifest URL, never on the server.
