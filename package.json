@@ -22,6 +22,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@upstash/redis": "^1.38.2",
     "axios": "^1.7.9",
     "cors": "^2.8.5",
     "express": "^4.21.2",

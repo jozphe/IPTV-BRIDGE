@@ -231,7 +231,7 @@ async function handleMeta(req, res) {
                     // account does not actually carry.
                     if (ref.k === 'series' && config.type === 'xtream' && ref.sid !== undefined) {
                         const client = new xtream_1.XtreamClient(config.host, config.username, config.password);
-                        const providerEpisodes = await (0, cache_1.cached)(`xt:all-episodes:${ref.sid}`, cache_1.TTL.STREAMS, () => client.listAllEpisodes(ref.sid));
+                        const providerEpisodes = await (0, cache_1.cached)(`xt:all-episodes:${ref.sid}`, cache_1.TTL.STREAMS, () => client.listAllEpisodes(ref.sid), { secrets: (0, cache_1.secretsFromConfig)(config) });
                         base.videos = providerEpisodes.map((ep) => ({
                             id: `${id}:${ep.season}:${ep.episode}`,
                             title: ep.title,
@@ -340,7 +340,7 @@ async function resolveOwnItemStreams(config, id) {
     // Series: resolve episode via Xtream get_series_info
     if (config.type === 'xtream' && ref.sid !== undefined && season !== undefined && episode !== undefined) {
         const client = new xtream_1.XtreamClient(config.host, config.username, config.password);
-        const eps = await (0, cache_1.cached)(`xt:ep:${ref.sid}:${season}:${episode}`, cache_1.TTL.STREAMS, () => client.getEpisodeStreams(ref.sid, season, episode));
+        const eps = await (0, cache_1.cached)(`xt:ep:${ref.sid}:${season}:${episode}`, cache_1.TTL.STREAMS, () => client.getEpisodeStreams(ref.sid, season, episode), { secrets: (0, cache_1.secretsFromConfig)(config) });
         return eps.map((e) => ({
             name: `🎬 IPTV${e.quality ? ' ' + e.quality : ''}`,
             title: e.title,
@@ -441,7 +441,7 @@ async function resolveGlobalStreams(config, id, type) {
         for (const m of matches.slice(0, 3)) {
             if (m.item.streamId === undefined)
                 continue;
-            const eps = await (0, cache_1.cached)(`xt:ep:${m.item.streamId}:${season}:${episode}`, cache_1.TTL.STREAMS, () => client.getEpisodeStreams(m.item.streamId, season, episode));
+            const eps = await (0, cache_1.cached)(`xt:ep:${m.item.streamId}:${season}:${episode}`, cache_1.TTL.STREAMS, () => client.getEpisodeStreams(m.item.streamId, season, episode), { secrets: (0, cache_1.secretsFromConfig)(config) });
             for (const e of eps) {
                 out.push({
                     name: `🎬 IPTV${e.quality ? ' ' + e.quality : ''}`,

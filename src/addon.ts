@@ -8,7 +8,7 @@ import { TMDBClient } from './tmdb/tmdb';
 import { rankMatches, itemsToStreams } from './tmdb/matcher';
 import { cleanTitle, categorySlug } from './iptv/cleaner';
 import { encodeItemId, decodeItemId, isItemId, ItemRef } from './utils/itemId';
-import { cached, TTL } from './utils/cache';
+import { cached, TTL, secretsFromConfig } from './utils/cache';
 
 // Cap per-media-type category rows so the manifest stays lean even for
 // providers with hundreds of groups. The full category list is still exposed
@@ -254,7 +254,8 @@ export async function handleMeta(req: Request, res: Response) {
             const providerEpisodes = await cached(
               `xt:all-episodes:${ref.sid}`,
               TTL.STREAMS,
-              () => client.listAllEpisodes(ref.sid!)
+              () => client.listAllEpisodes(ref.sid!),
+              { secrets: secretsFromConfig(config) }
             );
             base.videos = providerEpisodes.map((ep) => ({
               id: `${id}:${ep.season}:${ep.episode}`,
@@ -367,7 +368,8 @@ async function resolveOwnItemStreams(config: UserConfig, id: string): Promise<St
     const eps = await cached(
       `xt:ep:${ref.sid}:${season}:${episode}`,
       TTL.STREAMS,
-      () => client.getEpisodeStreams(ref.sid!, season, episode)
+      () => client.getEpisodeStreams(ref.sid!, season, episode),
+      { secrets: secretsFromConfig(config) }
     );
     return eps.map((e) => ({
       name: `🎬 IPTV${e.quality ? ' ' + e.quality : ''}`,
@@ -481,7 +483,8 @@ async function resolveGlobalStreams(
       const eps = await cached(
         `xt:ep:${m.item.streamId}:${season}:${episode}`,
         TTL.STREAMS,
-        () => client.getEpisodeStreams(m.item.streamId!, season!, episode!)
+        () => client.getEpisodeStreams(m.item.streamId!, season!, episode!),
+        { secrets: secretsFromConfig(config) }
       );
       for (const e of eps) {
         out.push({

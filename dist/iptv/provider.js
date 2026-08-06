@@ -50,7 +50,7 @@ async function getItems(config, kind) {
         const items = await (0, cache_1.staleWhileRevalidate)(`xt:streams:${fp}:${xtType}`, cache_1.TTL.STREAMS, async () => {
             const client = new xtream_1.XtreamClient(config.host, config.username, config.password);
             return client.getStreams(xtType);
-        });
+        }, { secrets: (0, cache_1.secretsFromConfig)(config) });
         return selected ? items.filter((item) => selected(item.categoryId, item.category)) : items;
     }
     if (config.type === 'm3u' && config.m3uUrl) {
@@ -58,7 +58,7 @@ async function getItems(config, kind) {
         // Parse the complete source once. Category filtering belongs after the
         // parse, otherwise a cache entry created for one selection can poison a
         // later request with a different category selection.
-        (0, m3u_1.parseM3UPlaylist)(config.m3uUrl));
+        (0, m3u_1.parseM3UPlaylist)(config.m3uUrl), { secrets: (0, cache_1.secretsFromConfig)(config) });
         const selected = buildCategoryMatcher(config);
         return parsed.items.filter((item) => item.type === kind &&
             (!selected || selected(item.categoryId, item.category)));
@@ -72,11 +72,11 @@ async function getCategories(config) {
         const categories = await (0, cache_1.staleWhileRevalidate)(`xt:cats:${fp}`, cache_1.TTL.CATEGORIES, async () => {
             const client = new xtream_1.XtreamClient(config.host, config.username, config.password);
             return client.getCategories();
-        });
+        }, { secrets: (0, cache_1.secretsFromConfig)(config) });
         return selected ? categories.filter((category) => selected(category.id, category.name)) : categories;
     }
     if (config.type === 'm3u' && config.m3uUrl) {
-        const parsed = await (0, cache_1.staleWhileRevalidate)(`m3u:parsed:${fp}`, cache_1.TTL.PLAYLIST, () => (0, m3u_1.parseM3UPlaylist)(config.m3uUrl));
+        const parsed = await (0, cache_1.staleWhileRevalidate)(`m3u:parsed:${fp}`, cache_1.TTL.PLAYLIST, () => (0, m3u_1.parseM3UPlaylist)(config.m3uUrl), { secrets: (0, cache_1.secretsFromConfig)(config) });
         const selected = buildCategoryMatcher(config);
         return selected ? parsed.categories.filter((category) => selected(category.id, category.name)) : parsed.categories;
     }
@@ -85,6 +85,8 @@ async function getCategories(config) {
 async function getTitleMatches(config, kind, titles) {
     const fp = configFingerprint(config);
     const items = await getItems(config, kind);
+    // Not JSON-serializable and trivially rebuilt from the shared stream list,
+    // so this index stays per-instance and is never written to Redis.
     const index = await (0, cache_1.cached)(`title-index:${fp}:${kind}`, cache_1.TTL.STREAMS, async () => {
         const map = new Map();
         for (const item of items) {
@@ -96,7 +98,7 @@ async function getTitleMatches(config, kind, titles) {
             map.set(key, list);
         }
         return map;
-    });
+    }, { shared: false });
     const matches = [];
     const seen = new Set();
     for (const title of titles) {

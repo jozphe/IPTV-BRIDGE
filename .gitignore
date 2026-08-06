@@ -1,3 +1,14 @@
 .freebuff/desktop-v2.db-wal
 .freebuff/desktop-v2.db-shm
 .freebuff/desktop-v2.db
+node_modules/uncrypto/dist/crypto.web.mjs
+node_modules/uncrypto/dist/crypto.web.d.ts
+node_modules/uncrypto/dist/crypto.web.cjs
+node_modules/uncrypto/dist/crypto.node.mjs
+node_modules/uncrypto/dist/crypto.node.d.ts
+node_modules/uncrypto/package.json
+node_modules/.package-lock.json
+/node_modules
+node_modules/.package-lock.json
+node_modules/.package-lock.json
+/node_modules

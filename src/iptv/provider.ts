@@ -1,7 +1,7 @@
 import { UserConfig, IPTVItem, IPTVCategory } from '../types';
 import { XtreamClient } from './xtream';
 import { parseM3UPlaylist } from './m3u';
-import { cached, staleWhileRevalidate, TTL } from '../utils/cache';
+import { cached, staleWhileRevalidate, TTL, secretsFromConfig } from '../utils/cache';
 import crypto from 'crypto';
 import { titleIdentity, categorySlug } from './cleaner';
 
@@ -51,7 +51,7 @@ export async function getItems(config: UserConfig, kind: MediaKind): Promise<IPT
     const items = await staleWhileRevalidate(`xt:streams:${fp}:${xtType}`, TTL.STREAMS, async () => {
       const client = new XtreamClient(config.host!, config.username!, config.password!);
       return client.getStreams(xtType);
-    });
+    }, { secrets: secretsFromConfig(config) });
     return selected ? items.filter((item) => selected(item.categoryId, item.category)) : items;
   }
 
@@ -61,7 +61,7 @@ export async function getItems(config: UserConfig, kind: MediaKind): Promise<IPT
       // parse, otherwise a cache entry created for one selection can poison a
       // later request with a different category selection.
       parseM3UPlaylist(config.m3uUrl!)
-    );
+    , { secrets: secretsFromConfig(config) });
     const selected = buildCategoryMatcher(config);
     return parsed.items.filter((item) =>
       item.type === kind &&
@@ -80,14 +80,14 @@ export async function getCategories(config: UserConfig): Promise<IPTVCategory[]>
     const categories = await staleWhileRevalidate(`xt:cats:${fp}`, TTL.CATEGORIES, async () => {
       const client = new XtreamClient(config.host!, config.username!, config.password!);
       return client.getCategories();
-    });
+    }, { secrets: secretsFromConfig(config) });
     return selected ? categories.filter((category) => selected(category.id, category.name)) : categories;
   }
 
   if (config.type === 'm3u' && config.m3uUrl) {
     const parsed = await staleWhileRevalidate(`m3u:parsed:${fp}`, TTL.PLAYLIST, () =>
       parseM3UPlaylist(config.m3uUrl!)
-    );
+    , { secrets: secretsFromConfig(config) });
     const selected = buildCategoryMatcher(config);
     return selected ? parsed.categories.filter((category) => selected(category.id, category.name)) : parsed.categories;
   }
@@ -102,6 +102,8 @@ export async function getTitleMatches(
 ): Promise<IPTVItem[]> {
   const fp = configFingerprint(config);
   const items = await getItems(config, kind);
+  // Not JSON-serializable and trivially rebuilt from the shared stream list,
+  // so this index stays per-instance and is never written to Redis.
   const index = await cached<TitleIndex>(`title-index:${fp}:${kind}`, TTL.STREAMS, async () => {
     const map: TitleIndex = new Map();
     for (const item of items) {
@@ -112,7 +114,7 @@ export async function getTitleMatches(
       map.set(key, list);
     }
     return map;
-  });
+  }, { shared: false });
 
   const matches: IPTVItem[] = [];
   const seen = new Set<string>();
