@@ -3,10 +3,29 @@ import { XtreamClient } from './xtream';
 import { parseM3UPlaylist } from './m3u';
 import { cached, staleWhileRevalidate, TTL } from '../utils/cache';
 import crypto from 'crypto';
-import { titleIdentity } from './cleaner';
+import { titleIdentity, categorySlug } from './cleaner';
 
 export type MediaKind = 'channel' | 'movie' | 'series';
 type TitleIndex = Map<string, IPTVItem[]>;
+
+/**
+ * Build a matcher honoring the configurator's category selection.
+ * `includedCategories` stores category ids (Xtream `live_5` / `vod_45`,
+ * M3U name-slugs) but items only expose the category NAME, so we match on
+ * id OR name OR slugified name to cover every provider shape.
+ */
+function buildCategoryMatcher(
+  config: UserConfig
+): ((id: string | undefined, name: string) => boolean) | null {
+  const selected = config.includedCategories;
+  if (!selected || !selected.length) return null;
+  const ids = new Set(selected.map(String));
+  const slugs = new Set(selected.map((s) => categorySlug(String(s))));
+  return (id, name) => {
+    const idStr = id ? String(id) : '';
+    return ids.has(idStr) || ids.has(name) || slugs.has(categorySlug(idStr)) || slugs.has(categorySlug(name));
+  };
+}
 
 function configFingerprint(config: UserConfig): string {
   const raw = config.type === 'xtream'
@@ -25,10 +44,15 @@ export async function getItems(config: UserConfig, kind: MediaKind): Promise<IPT
 
   if (config.type === 'xtream' && config.host && config.username && config.password) {
     const xtType = kind === 'channel' ? 'live' : kind;
-    return staleWhileRevalidate(`xt:streams:${fp}:${xtType}`, TTL.STREAMS, async () => {
+    const selected = buildCategoryMatcher(config);
+    // The matcher must run AFTER the cached fetch: the cache key only covers
+    // credentials, so filtering inside the producer would serve one user's
+    // category selection to every other user sharing the same provider.
+    const items = await staleWhileRevalidate(`xt:streams:${fp}:${xtType}`, TTL.STREAMS, async () => {
       const client = new XtreamClient(config.host!, config.username!, config.password!);
       return client.getStreams(xtType);
     });
+    return selected ? items.filter((item) => selected(item.categoryId, item.category)) : items;
   }
 
   if (config.type === 'm3u' && config.m3uUrl) {
@@ -38,12 +62,10 @@ export async function getItems(config: UserConfig, kind: MediaKind): Promise<IPT
       // later request with a different category selection.
       parseM3UPlaylist(config.m3uUrl!)
     );
-    const selected = config.includedCategories?.length
-      ? new Set(config.includedCategories.map(String))
-      : null;
+    const selected = buildCategoryMatcher(config);
     return parsed.items.filter((item) =>
       item.type === kind &&
-      (!selected || selected.has(item.category) || selected.has(item.category.toLowerCase().replace(/[^a-z0-9]+/g, '-')))
+      (!selected || selected(item.categoryId, item.category))
     );
   }
 
@@ -54,19 +76,20 @@ export async function getCategories(config: UserConfig): Promise<IPTVCategory[]>
   const fp = configFingerprint(config);
 
   if (config.type === 'xtream' && config.host && config.username && config.password) {
-    return staleWhileRevalidate(`xt:cats:${fp}`, TTL.CATEGORIES, async () => {
+    const selected = buildCategoryMatcher(config);
+    const categories = await staleWhileRevalidate(`xt:cats:${fp}`, TTL.CATEGORIES, async () => {
       const client = new XtreamClient(config.host!, config.username!, config.password!);
       return client.getCategories();
     });
+    return selected ? categories.filter((category) => selected(category.id, category.name)) : categories;
   }
 
   if (config.type === 'm3u' && config.m3uUrl) {
     const parsed = await staleWhileRevalidate(`m3u:parsed:${fp}`, TTL.PLAYLIST, () =>
       parseM3UPlaylist(config.m3uUrl!)
     );
-    if (!config.includedCategories?.length) return parsed.categories;
-    const selected = new Set(config.includedCategories.map(String));
-    return parsed.categories.filter((category) => selected.has(category.id) || selected.has(category.name));
+    const selected = buildCategoryMatcher(config);
+    return selected ? parsed.categories.filter((category) => selected(category.id, category.name)) : parsed.categories;
   }
 
   return [];

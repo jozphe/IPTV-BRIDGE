@@ -140,6 +140,11 @@ export class XtreamClient {
         cleanTitle: cleaned.cleanTitle,
         type: type === 'live' ? 'channel' : type,
         category: stream.category_name || String(stream.category_id || type),
+        // Prefixed exactly like getCategories() (`live_`, `vod_`, `series_`)
+        // so category selection + per-category filtering match by id.
+        categoryId: stream.category_id !== undefined && stream.category_id !== null
+          ? `${type === 'live' ? 'live' : type === 'movie' ? 'vod' : 'series'}_${stream.category_id}`
+          : undefined,
         logo: stream.stream_icon || stream.cover || stream.movie_image,
         url: streamUrl,
         year: cleaned.year || (rawYear ? parseInt(String(rawYear).substring(0, 4), 10) : undefined),

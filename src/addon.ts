@@ -1,14 +1,34 @@
 import { Request, Response } from 'express';
 import { decodeConfig, validateConfig } from './utils/config';
 import { isSafeProtocolId } from './utils/security';
-import { UserConfig, StremioManifest, StremioStream, StremioMeta } from './types';
-import { getItems, getTitleMatches, MediaKind } from './iptv/provider';
+import { UserConfig, StremioManifest, StremioCatalog, StremioStream, StremioMeta, IPTVItem, IPTVCategory } from './types';
+import { getItems, getCategories, getTitleMatches, MediaKind } from './iptv/provider';
 import { XtreamClient } from './iptv/xtream';
 import { TMDBClient } from './tmdb/tmdb';
 import { rankMatches, itemsToStreams } from './tmdb/matcher';
-import { cleanTitle } from './iptv/cleaner';
+import { cleanTitle, categorySlug } from './iptv/cleaner';
 import { encodeItemId, decodeItemId, isItemId, ItemRef } from './utils/itemId';
 import { cached, TTL } from './utils/cache';
+
+// Cap per-media-type category rows so the manifest stays lean even for
+// providers with hundreds of groups. The full category list is still exposed
+// as genre options on the main catalog (Discover dropdown).
+const MAX_CATEGORY_ROWS = 200;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([promise, new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms))]);
+}
+
+async function loadManifestCategories(config: UserConfig): Promise<IPTVCategory[]> {
+  try {
+    // Never let a slow/down provider delay the manifest past ~6s. The provider
+    // fetch itself keeps caching in the background, so a later refresh shows rows.
+    return await withTimeout(getCategories(config), 6000, []);
+  } catch (err) {
+    console.error('Manifest categories error:', err);
+    return [];
+  }
+}
 
 function stremioTypeToKind(type: string): MediaKind {
   if (type === 'tv') return 'channel';
@@ -22,34 +42,51 @@ function getPublicLogo(req: Request): string {
   return `${proto}://${host}/logo.png`;
 }
 
-export function getManifest(config: UserConfig, baseUrl?: string): StremioManifest {
-  const catalogs = [];
+export async function getManifest(config: UserConfig, baseUrl?: string): Promise<StremioManifest> {
+  // Pull the user's real IPTV categories (cached) so every category becomes
+  // both a genre option AND its own board row: movies first, then series,
+  // then live TV. `includedCategories` from the configurator is respected, so
+  // deselected groups never appear.
+  const categories = await loadManifestCategories(config);
+  const catalogs: StremioCatalog[] = [];
 
-  if (config.includeLive !== false) {
-    catalogs.push({
-      type: 'tv',
-      id: 'iptv_live',
-      name: 'IPTV Live Channels',
-      extra: [{ name: 'search', isRequired: false }, { name: 'genre', isRequired: false }, { name: 'skip', isRequired: false }]
-    });
-  }
+  const groups: Array<{
+    type: 'movie' | 'series' | 'tv';
+    kind: 'movie' | 'series' | 'live';
+    id: string;
+    name: string;
+    include: boolean;
+  }> = [
+    { type: 'movie', kind: 'movie', id: 'iptv_movies', name: 'IPTV Movies', include: config.includeMovies !== false },
+    { type: 'series', kind: 'series', id: 'iptv_series', name: 'IPTV Series', include: config.includeSeries !== false },
+    { type: 'tv', kind: 'live', id: 'iptv_live', name: 'IPTV Live Channels', include: config.includeLive !== false }
+  ];
 
-  if (config.includeMovies !== false) {
-    catalogs.push({
-      type: 'movie',
-      id: 'iptv_movies',
-      name: 'IPTV Movies',
-      extra: [{ name: 'search', isRequired: false }, { name: 'genre', isRequired: false }, { name: 'skip', isRequired: false }]
-    });
-  }
+  for (const group of groups) {
+    if (!group.include) continue;
+    const typeCategories = categories.filter((cat) => cat.type === group.kind);
 
-  if (config.includeSeries !== false) {
+    // Main catalog (all items of the type) + the full category list as genres.
     catalogs.push({
-      type: 'series',
-      id: 'iptv_series',
-      name: 'IPTV Series',
-      extra: [{ name: 'search', isRequired: false }, { name: 'genre', isRequired: false }, { name: 'skip', isRequired: false }]
+      type: group.type,
+      id: group.id,
+      name: group.name,
+      extra: [
+        { name: 'search', isRequired: false },
+        { name: 'genre', isRequired: false, options: typeCategories.map((cat) => cat.id) },
+        { name: 'skip', isRequired: false }
+      ]
     });
+
+    // One dedicated catalog (board row) per category, e.g. `IPTV Movies: Action`.
+    for (const cat of typeCategories.slice(0, MAX_CATEGORY_ROWS)) {
+      catalogs.push({
+        type: group.type,
+        id: `iptv_${group.kind}_cat_${cat.id}`,
+        name: `${group.name}: ${cat.name}`,
+        extra: [{ name: 'search', isRequired: false }, { name: 'skip', isRequired: false }]
+      });
+    }
   }
 
   // Use the bundled raster logo from public/logo.png. Stremio/Nuvio clients
@@ -58,7 +95,7 @@ export function getManifest(config: UserConfig, baseUrl?: string): StremioManife
 
   return {
     id: 'org.iptv.bridge',
-    version: '1.0.1',
+    version: '1.1.0',
     name: 'IPTV Bridge',
     description: 'Serverless Xtream & M3U IPTV Addon with TMDB Resolution, Global Search & Clean Categorization',
     logo,
@@ -85,25 +122,70 @@ export function getManifest(config: UserConfig, baseUrl?: string): StremioManife
 
 /* ----------------------------- CATALOG ----------------------------- */
 
+/** Extract the category key from a per-category catalog id (`iptv_movie_cat_…`). */
+function categoryFromCatalogId(catalogId: string): string | undefined {
+  const match = catalogId.match(/^iptv_(?:movie|series|live)_cat_(.+)$/);
+  return match ? match[1] : undefined;
+}
+
+/**
+ * Keep only items whose category matches the requested key. The key is a
+ * category id (Xtream `live_5` / `vod_45`, M3U name-slug) or a genre option
+ * value; we resolve it to the canonical category NAME via the cached category
+ * list, falling back to slug comparison if categories are unavailable.
+ */
+async function filterItemsByCategory(
+  config: UserConfig,
+  items: IPTVItem[],
+  categoryKey: string
+): Promise<IPTVItem[]> {
+  const slug = categorySlug(categoryKey);
+  const names = new Set<string>();
+  try {
+    for (const cat of await getCategories(config)) {
+      if (cat.id === categoryKey || cat.name === categoryKey || categorySlug(cat.name) === slug) {
+        names.add(cat.name);
+      }
+    }
+  } catch (err) {
+    console.error('Category filter error:', err);
+  }
+  return items.filter((item) =>
+    names.size ? names.has(item.category) : categorySlug(item.category) === slug
+  );
+}
+
 export async function handleCatalog(req: Request, res: Response) {
   try {
     const config = decodeConfig(req.params.config || '');
     if (validateConfig(config)) { res.json({ metas: [] }); return; }
     res.setHeader('Cache-Control', 'private, max-age=120, stale-while-revalidate=300');
     const fallbackPoster = getPublicLogo(req);
-    const { type, extra } = req.params;
+    const { type, id, extra } = req.params;
 
     let searchQuery = '';
+    let genreValue = '';
     let skip = 0;
     if (extra) {
       const s = extra.match(/search=([^&/]+)/);
       if (s) searchQuery = decodeURIComponent(s[1]);
+      const g = extra.match(/genre=([^&/]+)/);
+      if (g) genreValue = decodeURIComponent(g[1]);
       const sk = extra.match(/skip=(\d+)/);
       if (sk) skip = parseInt(sk[1], 10);
     }
 
     const kind = stremioTypeToKind(type);
     let items = await getItems(config, kind);
+
+    // Per-category catalogs (`iptv_movie_cat_<catId>` …) filter by their own
+    // category; the main catalogs filter by the `genre=` extra option.
+    const categoryKey = categoryFromCatalogId(id || '');
+    if (categoryKey) {
+      items = await filterItemsByCategory(config, items, categoryKey);
+    } else if (genreValue) {
+      items = await filterItemsByCategory(config, items, genreValue);
+    }
 
     if (searchQuery) {
       const q = searchQuery.toLowerCase();

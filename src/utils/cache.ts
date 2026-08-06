@@ -12,6 +12,7 @@
 
 interface CacheEntry<T> {
   value: T;
+  bytes: number;
   staleAt: number;
   expiresAt: number;
 }
@@ -19,20 +20,42 @@ interface CacheEntry<T> {
 const store = new Map<string, CacheEntry<unknown>>();
 const inflight = new Map<string, Promise<unknown>>();
 
-const MAX_ENTRIES = 200;
+const MAX_ENTRIES = 600;
+// Serverless instances share module memory across all configured users, so
+// bound total footprint by approximate size as well as entry count. Each
+// entry can be a multi-thousand-item stream list (several MB), so a pure
+// entry cap is not enough to avoid an OOM kill under heavy concurrent use.
+const MAX_BYTES = 128 * 1024 * 1024;
+
+let totalBytes = 0;
+
+function approxBytes(value: unknown): number {
+  try {
+    return (JSON.stringify(value) || '').length * 2; // UTF-16 approx
+  } catch {
+    return 0;
+  }
+}
+
+function removeEntry(key: string): void {
+  const entry = store.get(key);
+  if (entry) {
+    totalBytes -= entry.bytes;
+    store.delete(key);
+  }
+}
 
 function evictIfNeeded(): void {
-  if (store.size <= MAX_ENTRIES) return;
-  // Evict oldest / expired entries first.
   const now = Date.now();
+  // Evict expired entries first.
   for (const [key, entry] of store) {
-    if (entry.expiresAt <= now) store.delete(key);
+    if (entry.expiresAt <= now) removeEntry(key);
   }
-  // If still over capacity, drop oldest insertion-order entries.
-  while (store.size > MAX_ENTRIES) {
+  // Then drop oldest insertion-order entries until under both budgets.
+  while (store.size > MAX_ENTRIES || totalBytes > MAX_BYTES) {
     const oldestKey = store.keys().next().value;
     if (oldestKey === undefined) break;
-    store.delete(oldestKey);
+    removeEntry(oldestKey);
   }
 }
 
@@ -40,7 +63,7 @@ export function getCached<T>(key: string): T | undefined {
   const entry = store.get(key) as CacheEntry<T> | undefined;
   if (!entry) return undefined;
   if (entry.expiresAt <= Date.now()) {
-    store.delete(key);
+    removeEntry(key);
     return undefined;
   }
   return entry.value;
@@ -50,14 +73,17 @@ export function getStaleCached<T>(key: string): T | undefined {
   const entry = store.get(key) as CacheEntry<T> | undefined;
   if (!entry) return undefined;
   if (entry.expiresAt <= Date.now()) {
-    store.delete(key);
+    removeEntry(key);
     return undefined;
   }
   return entry.value;
 }
 
 export function setCached<T>(key: string, value: T, ttlMs: number): void {
-  store.set(key, { value, staleAt: Date.now() + ttlMs, expiresAt: Date.now() + ttlMs * 2 });
+  removeEntry(key);
+  const bytes = approxBytes(value);
+  store.set(key, { value, bytes, staleAt: Date.now() + ttlMs, expiresAt: Date.now() + ttlMs * 2 });
+  totalBytes += bytes;
   evictIfNeeded();
 }
 
@@ -81,8 +107,8 @@ export async function staleWhileRevalidate<T>(
   return cached(key, ttlMs, producer);
 }
 
-export function cacheStats(): { entries: number; inflight: number } {
-  return { entries: store.size, inflight: inflight.size };
+export function cacheStats(): { entries: number; inflight: number; approxMb: number } {
+  return { entries: store.size, inflight: inflight.size, approxMb: Math.round(totalBytes / 1024 / 1024) };
 }
 
 /**

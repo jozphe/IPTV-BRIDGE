@@ -195,6 +195,8 @@ Open `http://localhost:7000` for the landing page and `http://localhost:7000/con
 
 No environment variables are required — the TMDB key (optional) is entered per-user in the configurator and encoded into the manifest link.
 
+`vercel.json` configures the serverless function with `maxDuration: 60` and `memory: 1024`. On the **Hobby** plan the execution window is capped lower (~10 s); switch to **Pro** if your provider playlist is very large or you expect sustained traffic.
+
 ---
 
 ## Installing in Stremio & Nuvio
@@ -209,7 +211,16 @@ No environment variables are required — the TMDB key (optional) is entered per
 - **TTLs:** categories 30 min · streams 10 min · playlist parse 15 min · TMDB 24 h.
 - **De-duplication:** simultaneous identical requests share a single in-flight promise.
 - **Single-parse M3U:** one playlist download is reused across catalog, meta and stream requests via a provider fingerprint key.
-- **Bounded memory:** the cache evicts expired and oldest entries past a cap so warm instances stay lean.
+- **Bounded memory:** the cache evicts expired and oldest entries past both an entry cap and a ~128 MB byte budget, so one huge playlist can't crowd out other users on a shared warm instance.
+
+### Scale — what happens with thousands of users
+
+Vercel routes each deployment to many warm serverless instances, so concurrent load scales horizontally. A few things to know:
+
+- **The cache is per-instance.** Every instance keeps its own in-memory cache, so N concurrent instances fetch the provider up to N times before caches warm. The in-memory budget, `stale-while-revalidate` refresh and in-flight de-duplication keep this efficient; for very large audiences, add a shared cache (e.g. Upstash/Vercel KV) keyed by the config fingerprint.
+- **Concurrency & cold starts.** Hobby accounts have a modest concurrent-execution ceiling (excess requests queue); the first request after a cold start can take a few seconds while the playlist parses. Traffic spikes queue and may time out on Hobby — upgrade the plan for launch-scale audiences.
+- **Direct playback is the load-saver.** Streams are returned as the provider's own URLs and played peer-to-peer — Vercel never proxies or relays video, so bandwidth stays at zero and the 4.5 MB function response limit is never a concern.
+- **Installing thousands of users is one manifest fetch each.** The manifest embeds the user's category rows and genre options, so each install is a single request; catalog pages are cached client-side and with `Cache-Control`.
 
 ---
 
@@ -223,6 +234,7 @@ No environment variables are required — the TMDB key (optional) is entered per
 
 ## Roadmap
 
+- ✅ Per-category board rows — every IPTV category is its own catalog row (and a genre option) for movies, series and live TV.
 - EPG / TV guide support for live channels.
 - Series episode drill-down via Xtream `get_series_info`.
 - Optional per-quality stream splitting in the matcher.

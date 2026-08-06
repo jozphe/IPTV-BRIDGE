@@ -20,22 +20,41 @@ exports.cacheStats = cacheStats;
 exports.cached = cached;
 const store = new Map();
 const inflight = new Map();
-const MAX_ENTRIES = 200;
+const MAX_ENTRIES = 600;
+// Serverless instances share module memory across all configured users, so
+// bound total footprint by approximate size as well as entry count. Each
+// entry can be a multi-thousand-item stream list (several MB), so a pure
+// entry cap is not enough to avoid an OOM kill under heavy concurrent use.
+const MAX_BYTES = 128 * 1024 * 1024;
+let totalBytes = 0;
+function approxBytes(value) {
+    try {
+        return (JSON.stringify(value) || '').length * 2; // UTF-16 approx
+    }
+    catch {
+        return 0;
+    }
+}
+function removeEntry(key) {
+    const entry = store.get(key);
+    if (entry) {
+        totalBytes -= entry.bytes;
+        store.delete(key);
+    }
+}
 function evictIfNeeded() {
-    if (store.size <= MAX_ENTRIES)
-        return;
-    // Evict oldest / expired entries first.
     const now = Date.now();
+    // Evict expired entries first.
     for (const [key, entry] of store) {
         if (entry.expiresAt <= now)
-            store.delete(key);
+            removeEntry(key);
     }
-    // If still over capacity, drop oldest insertion-order entries.
-    while (store.size > MAX_ENTRIES) {
+    // Then drop oldest insertion-order entries until under both budgets.
+    while (store.size > MAX_ENTRIES || totalBytes > MAX_BYTES) {
         const oldestKey = store.keys().next().value;
         if (oldestKey === undefined)
             break;
-        store.delete(oldestKey);
+        removeEntry(oldestKey);
     }
 }
 function getCached(key) {
@@ -43,7 +62,7 @@ function getCached(key) {
     if (!entry)
         return undefined;
     if (entry.expiresAt <= Date.now()) {
-        store.delete(key);
+        removeEntry(key);
         return undefined;
     }
     return entry.value;
@@ -53,13 +72,16 @@ function getStaleCached(key) {
     if (!entry)
         return undefined;
     if (entry.expiresAt <= Date.now()) {
-        store.delete(key);
+        removeEntry(key);
         return undefined;
     }
     return entry.value;
 }
 function setCached(key, value, ttlMs) {
-    store.set(key, { value, staleAt: Date.now() + ttlMs, expiresAt: Date.now() + ttlMs * 2 });
+    removeEntry(key);
+    const bytes = approxBytes(value);
+    store.set(key, { value, bytes, staleAt: Date.now() + ttlMs, expiresAt: Date.now() + ttlMs * 2 });
+    totalBytes += bytes;
     evictIfNeeded();
 }
 async function staleWhileRevalidate(key, ttlMs, producer) {
@@ -78,7 +100,7 @@ async function staleWhileRevalidate(key, ttlMs, producer) {
     return cached(key, ttlMs, producer);
 }
 function cacheStats() {
-    return { entries: store.size, inflight: inflight.size };
+    return { entries: store.size, inflight: inflight.size, approxMb: Math.round(totalBytes / 1024 / 1024) };
 }
 /**
  * Resolve a value from cache, or run `producer` once and cache the result.

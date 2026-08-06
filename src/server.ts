@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { decodeConfig } from './utils/config';
+import { UserConfig } from './types';
 import { getManifest, handleCatalog, handleMeta, handleStream } from './addon';
 import { handleTestConnection } from './api/testConnection';
 import { cacheStats } from './utils/cache';
@@ -15,13 +16,6 @@ app.disable('x-powered-by');
 app.use(securityHeaders);
 app.use(cors({ origin: '*', methods: ['GET', 'POST', 'OPTIONS'], allowedHeaders: ['Content-Type'] }));
 app.use(express.json({ limit: '32kb', strict: true }));
-app.use(express.static(path.join(__dirname, '../public'), {
-  maxAge: '7d',
-  immutable: false,
-  setHeaders(res, filePath) {
-    if (/\.(png|svg|css|js)$/i.test(filePath)) res.setHeader('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
-  }
-}));
 
 app.use((req, res, next) => {
   const started = Date.now();
@@ -55,7 +49,7 @@ app.get('/docs', (req, res) => {
 
 app.get('/health', (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
-  res.json({ ok: true, uptime: Math.round(process.uptime()), cache: cacheStats(), version: '1.0.1' });
+  res.json({ ok: true, uptime: Math.round(process.uptime()), cache: cacheStats(), version: '1.1.0' });
 });
 
 // Stremio/Nuvio append `/configure` to the addon's base URL. For a configured
@@ -68,22 +62,41 @@ app.get('/:config/configure', (req, res) => {
 // Real-time IPTV Connection Test API
 app.post('/api/test-connection', rateLimit(12, 60_000), handleTestConnection);
 
-// Manifest routes
+// Manifest routes. Async because the manifest now embeds the user's real IPTV
+// categories (cached) as genre options + per-category catalogs.
+async function sendManifest(res: express.Response, config: UserConfig, baseUrl: string) {
+  res.setHeader('Cache-Control', 'private, max-age=300, stale-while-revalidate=3600');
+  try {
+    res.json(await getManifest(config, baseUrl));
+  } catch (err) {
+    console.error('Manifest Error:', err);
+    res.status(500).json({ error: 'Failed to build manifest' });
+  }
+}
+
 app.get('/manifest.json', (req, res) => {
-  const config = decodeConfig('');
-  res.json(getManifest(config, getBaseUrl(req)));
+  sendManifest(res, decodeConfig(''), getBaseUrl(req));
 });
 
 // Public ownership-validation manifest for stremio-addons.net.
 app.get('/demo-manifest.json', (req, res) => {
-  res.setHeader('Cache-Control', 'public, max-age=300');
-  res.json(getManifest(decodeConfig(''), getBaseUrl(req)));
+  sendManifest(res, decodeConfig(''), getBaseUrl(req));
 });
 
 app.get('/:config/manifest.json', (req, res) => {
-  const config = decodeConfig(req.params.config);
-  res.json(getManifest(config, getBaseUrl(req)));
+  sendManifest(res, decodeConfig(req.params.config), getBaseUrl(req));
 });
+
+// Static assets are served AFTER the manifest routes so a bare `/manifest.json`
+// request hits the dynamic handler (correct logo + version) instead of the
+// static placeholder in public/.
+app.use(express.static(path.join(__dirname, '../public'), {
+  maxAge: '7d',
+  immutable: false,
+  setHeaders(res, filePath) {
+    if (/\.(png|svg|css|js)$/i.test(filePath)) res.setHeader('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
+  }
+}));
 
 // Catalog routes
 app.get('/catalog/:type/:id.json', handleCatalog);

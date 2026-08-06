@@ -76,6 +76,7 @@ export async function parseM3UPlaylist(m3uUrl: string, selectedCategories?: stri
           cleanTitle: cleaned.cleanTitle,
           type: itemType,
           category: categoryName,
+          categoryId,
           logo,
           url,
           year: cleaned.year,

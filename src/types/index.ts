@@ -25,6 +25,7 @@ export interface IPTVItem {
   cleanTitle: string;
   type: 'channel' | 'movie' | 'series';
   category: string;
+  categoryId?: string;
   logo?: string;
   url?: string;
   year?: number;

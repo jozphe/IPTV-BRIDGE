@@ -63,6 +63,7 @@ async function parseM3UPlaylist(m3uUrl, selectedCategories) {
                     cleanTitle: cleaned.cleanTitle,
                     type: itemType,
                     category: categoryName,
+                    categoryId,
                     logo,
                     url,
                     year: cleaned.year,
