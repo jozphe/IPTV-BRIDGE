@@ -50,7 +50,7 @@ app.get('/docs', (req, res) => {
 
 app.get('/health', (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
-  res.json({ ok: true, uptime: Math.round(process.uptime()), cache: cacheStats(), version: '1.5.0' });
+  res.json({ ok: true, uptime: Math.round(process.uptime()), cache: cacheStats(), version: '1.6.0' });
 });
 
 // Real-time IPTV Connection Test API

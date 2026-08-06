@@ -120,7 +120,7 @@ async function getManifest(config, baseUrl) {
     const logo = `${baseUrl || ''}/logo.png`;
     return {
         id: 'org.iptv.bridge',
-        version: '1.5.0',
+        version: '1.6.0',
         name: 'IPTV Bridge',
         description: 'Serverless Xtream & M3U IPTV Addon with TMDB Resolution, Global Search & Clean Categorization',
         logo,

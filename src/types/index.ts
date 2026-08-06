@@ -10,6 +10,10 @@ export interface UserConfig {
   tmdbApiKey?: string;
   // Included Category IDs / Names
   includedCategories?: string[];
+  // If > 0, the addon ONLY loads this many categories per type (picked from
+  // includedCategories, or the first N of the provider). Smaller provider
+  // fetches = fast catalogs/search; 0 = load everything.
+  categoryLimit?: number;
   // Include types (live, movie, series)
   includeLive?: boolean;
   includeMovies?: boolean;
